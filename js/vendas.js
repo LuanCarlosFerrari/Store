@@ -1,9 +1,10 @@
 // Classe para gerenciar vendas e caixa
 class VendaController {
-    constructor(produtoController, clienteController, databaseController, appController = null) {
+    constructor(produtoController, clienteController, databaseController, pagamentoController = null, appController = null) {
         this.produtoController = produtoController;
         this.clienteController = clienteController;
         this.database = databaseController;
+        this.pagamentoController = pagamentoController;
         this.appController = appController;
         this.vendas = [];
         this.loading = false;
@@ -64,9 +65,7 @@ class VendaController {
         } finally {
             this.showLoading(false);
         }
-    }
-
-    initEventListeners() {
+    } initEventListeners() {
         const form = document.querySelector('#caixa form');
         if (form) {
             form.addEventListener('submit', (e) => this.registrarVenda(e));
@@ -94,9 +93,31 @@ class VendaController {
             selectProduto.addEventListener('change', calcularTotal);
             inputQuantidade.addEventListener('input', calcularTotal);
         }
-    }
 
-    async registrarVenda(e) {
+        // Event listeners para modal de pagamento
+        const modalPagamento = document.getElementById('modalPagamento');
+        const btnFecharModal = document.getElementById('fecharModalPagamento');
+        const formPagamento = document.getElementById('formPagamento');
+
+        if (btnFecharModal) {
+            btnFecharModal.addEventListener('click', () => this.fecharModalPagamento());
+        }
+
+        if (formPagamento) {
+            formPagamento.addEventListener('submit', (e) => this.processarPagamento(e));
+        }
+
+        // Atualizar campos de parcelas quando método ou tipo mudar
+        const tipoVenda = document.getElementById('tipoVenda');
+        const metodoPagamento = document.getElementById('metodoPagamento');
+        const divParcelas = document.getElementById('divParcelas');
+
+        if (tipoVenda && divParcelas) {
+            tipoVenda.addEventListener('change', () => {
+                divParcelas.style.display = tipoVenda.value === 'parcelada' ? 'block' : 'none';
+            });
+        }
+    } async registrarVenda(e) {
         e.preventDefault();
         if (this.loading) return;
 
@@ -127,69 +148,152 @@ class VendaController {
             return;
         }
 
-        this.showLoading(true);
-        try {
-            const valorUnitario = valorTotal / quantidade;
+        // Armazenar dados da venda temporariamente para o modal de pagamento
+        this.vendaTemporaria = {
+            clienteId,
+            produtoId,
+            quantidade,
+            valorTotal,
+            valorUnitario: valorTotal / quantidade,
+            produto,
+            form
+        };
 
+        // Abrir modal de pagamento
+        this.abrirModalPagamento();
+    }
+
+    abrirModalPagamento() {
+        const modal = document.getElementById('modalPagamento');
+        const valorTotalModal = document.getElementById('valorTotalModal');
+
+        if (modal && valorTotalModal && this.vendaTemporaria) {
+            valorTotalModal.textContent = `R$ ${this.vendaTemporaria.valorTotal.toFixed(2).replace('.', ',')}`;
+
+            // Resetar formulário de pagamento
+            const form = document.getElementById('formPagamento');
+            if (form) {
+                form.reset();
+                document.getElementById('tipoVenda').value = 'a_vista';
+                document.getElementById('divParcelas').style.display = 'none';
+            }
+
+            modal.classList.remove('hidden');
+        }
+    }
+
+    fecharModalPagamento() {
+        const modal = document.getElementById('modalPagamento');
+        if (modal) {
+            modal.classList.add('hidden');
+            this.vendaTemporaria = null;
+        }
+    }
+
+    async processarPagamento(e) {
+        e.preventDefault();
+        if (this.loading || !this.vendaTemporaria) return;
+
+        this.showLoading(true);
+
+        try {
+            const tipoVenda = document.getElementById('tipoVenda').value;
+            const metodoPagamento = document.getElementById('metodoPagamento').value;
+            const observacoes = document.getElementById('observacoesPagamento').value;
+
+            let dataVencimento = new Date();
+            let numeroParcelas = 1;
+            let valorPago = this.vendaTemporaria.valorTotal;
+            let statusPagamento = 'pago';
+
+            // Configurar baseado no tipo de venda
+            if (tipoVenda === 'a_prazo') {
+                const diasVencimento = parseInt(document.getElementById('diasVencimento').value) || 30;
+                dataVencimento.setDate(dataVencimento.getDate() + diasVencimento);
+                valorPago = 0;
+                statusPagamento = 'pendente';
+            } else if (tipoVenda === 'parcelada') {
+                numeroParcelas = parseInt(document.getElementById('numeroParcelas').value) || 1;
+                const diasVencimento = parseInt(document.getElementById('diasVencimento').value) || 30;
+                dataVencimento.setDate(dataVencimento.getDate() + diasVencimento);
+                valorPago = 0;
+                statusPagamento = 'pendente';
+            }
+
+            // Criar venda primeiro
+            let novaVenda;
             if (this.database) {
-                console.log('VendaController: Salvando no banco de dados...');
-                // Salvar no banco de dados
-                const novaVenda = await this.database.criarVenda({
-                    cliente_id: clienteId,
-                    produto_id: produtoId,
-                    quantidade: quantidade,
-                    valor_unitario: valorUnitario,
-                    valor_total: valorTotal
+                console.log('VendaController: Salvando venda no banco de dados...');
+                novaVenda = await this.database.criarVenda({
+                    cliente_id: this.vendaTemporaria.clienteId,
+                    produto_id: this.vendaTemporaria.produtoId,
+                    quantidade: this.vendaTemporaria.quantidade,
+                    valor_unitario: this.vendaTemporaria.valorUnitario,
+                    valor_total: this.vendaTemporaria.valorTotal
                 });
 
-                console.log('VendaController: Venda salva:', novaVenda);
-
-                // Recarregar lista de vendas
-                await this.carregarVendas();
+                // Criar pagamento
+                if (this.pagamentoController) {
+                    await this.pagamentoController.criarPagamento({
+                        venda_id: novaVenda.id,
+                        valor_total: this.vendaTemporaria.valorTotal,
+                        valor_pago: valorPago,
+                        metodo_pagamento: metodoPagamento,
+                        data_vencimento: dataVencimento.toISOString().split('T')[0],
+                        numero_parcelas: numeroParcelas,
+                        status: statusPagamento,
+                        observacoes: observacoes
+                    });
+                }
 
                 // Atualizar estoque
-                await this.produtoController.atualizarEstoque(produtoId, produto.quantidade - quantidade);
+                await this.produtoController.atualizarEstoque(
+                    this.vendaTemporaria.produtoId,
+                    this.vendaTemporaria.produto.quantidade - this.vendaTemporaria.quantidade
+                );
 
-                this.showMessage('Venda registrada com sucesso!', 'success');
-
-                // Notificar o AppController para atualizar o dashboard
-                if (this.appController && typeof this.appController.atualizarDashboard === 'function') {
-                    await this.appController.atualizarDashboard();
-                }
             } else {
                 console.log('VendaController: Database não disponível, usando fallback...');
-                // Fallback para dados locais
-                const novaVenda = {
+                novaVenda = {
                     id: Date.now().toString(),
                     data_venda: new Date().toISOString().split('T')[0],
-                    cliente_id: clienteId,
-                    produto_id: produtoId,
-                    quantidade: quantidade,
-                    valor_total: valorTotal,
-                    clientes: this.clienteController.obterCliente(clienteId),
-                    produtos: produto
+                    cliente_id: this.vendaTemporaria.clienteId,
+                    produto_id: this.vendaTemporaria.produtoId,
+                    quantidade: this.vendaTemporaria.quantidade,
+                    valor_total: this.vendaTemporaria.valorTotal,
+                    clientes: this.clienteController.obterCliente(this.vendaTemporaria.clienteId),
+                    produtos: this.vendaTemporaria.produto
                 };
 
-                console.log('VendaController: Adicionando venda local:', novaVenda);
                 this.vendas.unshift(novaVenda);
                 this.renderizarHistorico();
 
                 // Atualizar estoque
-                await this.produtoController.atualizarEstoque(produtoId, produto.quantidade - quantidade);
-
-                this.showMessage('Venda registrada com sucesso (modo local)!', 'success');
-
-                // Notificar o AppController para atualizar o dashboard
-                if (this.appController && typeof this.appController.atualizarDashboard === 'function') {
-                    await this.appController.atualizarDashboard();
-                }
+                await this.produtoController.atualizarEstoque(
+                    this.vendaTemporaria.produtoId,
+                    this.vendaTemporaria.produto.quantidade - this.vendaTemporaria.quantidade
+                );
             }
 
-            form.reset();
+            // Recarregar vendas
+            await this.carregarVendas();
+
+            // Mostrar mensagem de sucesso
+            const tipoMensagem = tipoVenda === 'a_vista' ? 'Venda registrada e paga' : 'Venda registrada';
+            this.showMessage(`${tipoMensagem} com sucesso!`, 'success');
+
+            // Notificar o AppController para atualizar o dashboard
+            if (this.appController && typeof this.appController.atualizarDashboard === 'function') {
+                await this.appController.atualizarDashboard();
+            }
+
+            // Fechar modal e resetar formulário
+            this.fecharModalPagamento();
+            this.vendaTemporaria.form.reset();
 
         } catch (error) {
-            console.error('Erro ao registrar venda:', error);
-            this.showMessage('Erro ao registrar venda: ' + error.message, 'error');
+            console.error('Erro ao processar pagamento:', error);
+            this.showMessage('Erro ao processar pagamento: ' + error.message, 'error');
         } finally {
             this.showLoading(false);
         }
@@ -199,7 +303,7 @@ class VendaController {
         const tbody = document.getElementById('corpoTabelaVendas');
         if (tbody) {
             if (this.vendas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="border px-2 py-4 text-gray-500 text-center">Nenhuma venda registrada</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="border px-2 py-4 text-gray-500 text-center">Nenhuma venda registrada</td></tr>';
                 return;
             }
 
@@ -208,6 +312,32 @@ class VendaController {
                 const clienteNome = venda.clientes?.nome || 'Cliente não encontrado';
                 const produtoNome = venda.produtos?.nome || 'Produto não encontrado';
 
+                // Obter status do pagamento (se disponível)
+                let statusPagamento = 'N/A';
+                let corStatus = 'text-gray-500';
+
+                if (venda.pagamentos && venda.pagamentos.length > 0) {
+                    const pagamento = venda.pagamentos[0];
+                    switch (pagamento.status) {
+                        case 'pago':
+                            statusPagamento = 'Pago';
+                            corStatus = 'text-green-600';
+                            break;
+                        case 'pendente':
+                            statusPagamento = 'Pendente';
+                            corStatus = 'text-yellow-600';
+                            break;
+                        case 'parcial':
+                            statusPagamento = 'Parcial';
+                            corStatus = 'text-blue-600';
+                            break;
+                        case 'vencido':
+                            statusPagamento = 'Vencido';
+                            corStatus = 'text-red-600';
+                            break;
+                    }
+                }
+
                 return `
                     <tr>
                         <td class="border px-2 py-1">${dataFormatada}</td>
@@ -215,6 +345,7 @@ class VendaController {
                         <td class="border px-2 py-1">${produtoNome}</td>
                         <td class="border px-2 py-1">${venda.quantidade}</td>
                         <td class="border px-2 py-1">R$ ${venda.valor_total.toFixed(2).replace('.', ',')}</td>
+                        <td class="border px-2 py-1 ${corStatus}">${statusPagamento}</td>
                     </tr>
                 `;
             }).join('');

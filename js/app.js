@@ -97,21 +97,28 @@ class AppController {
             inputData.value = hoje;
             inputData.max = hoje; // Não permitir datas futuras
         }
-    }
-
-    async initControllers() {
+    } async initControllers() {
         // Inicializar database controller primeiro
         if (window.authController) {
             this.databaseController = new DatabaseController(window.authController);
 
             // Aguardar database estar pronto
             await this.waitForDatabase();
-        }
-
-        // Inicializar controladores na ordem correta, passando database
+        }        // Inicializar controladores na ordem correta, passando database
         this.produtoController = new ProdutoController(this.databaseController);
         this.clienteController = new ClienteController(this.databaseController);
-        this.vendaController = new VendaController(this.produtoController, this.clienteController, this.databaseController, this);
+        this.pagamentoController = new PagamentoController(this.databaseController);
+        this.pagamentosInterface = new PagamentosInterfaceController(this.pagamentoController, this);
+        this.vendaController = new VendaController(
+            this.produtoController,
+            this.clienteController,
+            this.databaseController,
+            this.pagamentoController,
+            this
+        );
+
+        // Tornar disponível globalmente
+        window.pagamentosInterface = this.pagamentosInterface;
 
         // Atualizar selects iniciais
         setTimeout(() => {
@@ -162,11 +169,14 @@ class AppController {
         const linkAtivo = document.getElementById(`nav-${abaId}`);
         if (linkAtivo) {
             linkAtivo.classList.add('bg-gray-700');
-        }
-
-        // Atualizar selects quando mostrar a aba de vendas
+        }        // Atualizar selects quando mostrar a aba de vendas
         if (abaId === 'caixa' && this.vendaController) {
             this.vendaController.atualizarSelects();
+        }
+
+        // Carregar pagamentos quando mostrar a aba de pagamentos
+        if (abaId === 'pagamentos' && this.pagamentosInterface) {
+            this.pagamentosInterface.carregarPagamentos();
         }
 
         // Atualizar dashboard quando mostrá-lo

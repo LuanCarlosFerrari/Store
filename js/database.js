@@ -340,6 +340,261 @@ class DatabaseController {
         }
     }
 
+    // OPERAÇÕES DE PAGAMENTOS
+    async criarPagamento(pagamento) {
+        this.ensureReady();
+
+        try {
+            const user = await this.authController.getCurrentUser();
+            if (!user) throw new Error('Usuário não autenticado');
+
+            const { data, error } = await this.supabase
+                .from('pagamentos')
+                .insert([{
+                    venda_id: pagamento.venda_id,
+                    valor_total: pagamento.valor_total,
+                    valor_pago: pagamento.valor_pago,
+                    metodo_pagamento: pagamento.metodo_pagamento,
+                    data_vencimento: pagamento.data_vencimento,
+                    numero_parcelas: pagamento.numero_parcelas,
+                    status: pagamento.status,
+                    observacoes: pagamento.observacoes,
+                    user_id: user.id
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Erro ao criar pagamento:', error);
+            throw error;
+        }
+    }
+
+    async listarPagamentos(filtros = {}) {
+        this.ensureReady();
+
+        try {
+            let query = this.supabase
+                .from('pagamentos')
+                .select(`
+                    *,
+                    vendas(
+                        id,
+                        data_venda,
+                        clientes(nome),
+                        produtos(nome)
+                    )
+                `)
+                .order('data_vencimento', { ascending: true });
+
+            // Aplicar filtros
+            if (filtros.status) {
+                query = query.eq('status', filtros.status);
+            }
+            if (filtros.metodo_pagamento) {
+                query = query.eq('metodo_pagamento', filtros.metodo_pagamento);
+            }
+            if (filtros.data_inicio) {
+                query = query.gte('data_vencimento', filtros.data_inicio);
+            }
+            if (filtros.data_fim) {
+                query = query.lte('data_vencimento', filtros.data_fim);
+            }
+
+            const { data, error } = await query;
+
+            if (error) throw error;
+            return data || [];
+        } catch (error) {
+            console.error('Erro ao listar pagamentos:', error);
+            throw error;
+        }
+    }
+
+    async obterPagamento(id) {
+        this.ensureReady();
+
+        try {
+            const { data, error } = await this.supabase
+                .from('pagamentos')
+                .select(`
+                    *,
+                    vendas(
+                        id,
+                        data_venda,
+                        clientes(nome),
+                        produtos(nome)
+                    )
+                `)
+                .eq('id', id)
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Erro ao obter pagamento:', error);
+            throw error;
+        }
+    }
+
+    async atualizarPagamento(id, dadosAtualizacao) {
+        this.ensureReady();
+
+        try {
+            const { data, error } = await this.supabase
+                .from('pagamentos')
+                .update(dadosAtualizacao)
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Erro ao atualizar pagamento:', error);
+            throw error;
+        }
+    }
+
+    async listarPagamentosPorPeriodo(dataInicio, dataFim) {
+        this.ensureReady();
+
+        try {
+            const { data, error } = await this.supabase
+                .from('pagamentos')
+                .select(`
+                    *,
+                    vendas(
+                        id,
+                        data_venda,
+                        clientes(nome),
+                        produtos(nome)
+                    )
+                `)
+                .gte('data_vencimento', dataInicio)
+                .lte('data_vencimento', dataFim)
+                .order('data_vencimento', { ascending: false });
+
+            if (error) throw error;
+            return data || [];
+        } catch (error) {
+            console.error('Erro ao obter pagamentos por período:', error);
+            throw error;
+        }
+    }
+
+    // OPERAÇÕES DE PARCELAS
+    async criarParcelas(parcelas) {
+        this.ensureReady();
+
+        try {
+            const user = await this.authController.getCurrentUser();
+            if (!user) throw new Error('Usuário não autenticado');
+
+            const parcelasComUser = parcelas.map(parcela => ({
+                ...parcela,
+                user_id: user.id
+            }));
+
+            const { data, error } = await this.supabase
+                .from('parcelas')
+                .insert(parcelasComUser)
+                .select();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Erro ao criar parcelas:', error);
+            throw error;
+        }
+    }
+
+    async listarParcelasPorPagamento(pagamentoId) {
+        this.ensureReady();
+
+        try {
+            const { data, error } = await this.supabase
+                .from('parcelas')
+                .select('*')
+                .eq('pagamento_id', pagamentoId)
+                .order('numero_parcela');
+
+            if (error) throw error;
+            return data || [];
+        } catch (error) {
+            console.error('Erro ao listar parcelas:', error);
+            throw error;
+        }
+    }
+
+    async atualizarParcela(id, dadosAtualizacao) {
+        this.ensureReady();
+
+        try {
+            const { data, error } = await this.supabase
+                .from('parcelas')
+                .update(dadosAtualizacao)
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Erro ao atualizar parcela:', error);
+            throw error;
+        }
+    }
+
+    // OPERAÇÕES DE HISTÓRICO DE PAGAMENTOS
+    async criarHistoricoPagamento(historico) {
+        this.ensureReady();
+
+        try {
+            const user = await this.authController.getCurrentUser();
+            if (!user) throw new Error('Usuário não autenticado');
+
+            const { data, error } = await this.supabase
+                .from('historico_pagamentos')
+                .insert([{
+                    pagamento_id: historico.pagamento_id,
+                    valor_pago: historico.valor_pago,
+                    metodo_pagamento: historico.metodo_pagamento,
+                    data_pagamento: historico.data_pagamento,
+                    observacoes: historico.observacoes,
+                    user_id: user.id
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Erro ao criar histórico de pagamento:', error);
+            throw error;
+        }
+    }
+
+    async listarHistoricoPagamento(pagamentoId) {
+        this.ensureReady();
+
+        try {
+            const { data, error } = await this.supabase
+                .from('historico_pagamentos')
+                .select('*')
+                .eq('pagamento_id', pagamentoId)
+                .order('data_pagamento', { ascending: false });
+
+            if (error) throw error;
+            return data || [];
+        } catch (error) {
+            console.error('Erro ao listar histórico de pagamento:', error);
+            throw error;
+        }
+    }
+
     // MÉTODOS UTILITÁRIOS
     async verificarConexao() {
         try {
