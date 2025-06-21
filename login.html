@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Sistema de Controle de Estoque</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#000000',
+                        'secondary': '#404040',
+                        'accent': '#666666',
+                        'background': '#f5f5f5'
+                    },
+                    animation: {
+                        'spin-slow': 'spin 2s linear infinite',
+                        'fade-in': 'fadeIn 0.5s ease-in-out'
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="font-sans bg-gray-50 text-gray-900 min-h-screen flex items-center justify-center">
+
+    <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-md border-t-4 border-black">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-black mb-2">Sistema de Estoque</h1>
+            <p class="text-secondary">Faça login para continuar</p>
+        </div><!-- Formulário de Login -->
+        <div id="loginForm" class="space-y-6">
+            <div>
+                <label for="email" class="block text-sm font-medium text-secondary mb-2">E-mail</label>
+                <input type="email" id="email" name="email"
+                    class="w-full border border-gray-400 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                    placeholder="seu@email.com" required>
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium text-secondary mb-2">Senha</label>
+                <input type="password" id="password" name="password"
+                    class="w-full border border-gray-400 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                    placeholder="Sua senha" required>
+            </div>
+
+            <button id="loginBtn" type="button"
+                class="w-full bg-black text-white py-2 px-4 rounded-md hover:bg-gray-800 transition-all duration-200 font-medium">
+                Entrar
+            </button>
+
+            <div class="text-center">
+                <button id="showRegisterBtn" type="button"
+                    class="text-accent hover:text-secondary transition-colors duration-200 text-sm">
+                    Não tem conta? Cadastre-se
+                </button>
+            </div>
+        </div> <!-- Formulário de Cadastro -->
+        <div id="registerForm" class="space-y-6 hidden">
+            <div>
+                <label for="registerEmail" class="block text-sm font-medium text-secondary mb-2">E-mail</label>
+                <input type="email" id="registerEmail" name="registerEmail"
+                    class="w-full border border-gray-400 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                    placeholder="seu@email.com" required>
+            </div>
+
+            <div>
+                <label for="registerPassword" class="block text-sm font-medium text-secondary mb-2">Senha</label>
+                <input type="password" id="registerPassword" name="registerPassword"
+                    class="w-full border border-gray-400 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                    placeholder="Mínimo 6 caracteres" required>
+            </div>
+
+            <div>
+                <label for="confirmPassword" class="block text-sm font-medium text-secondary mb-2">Confirmar
+                    Senha</label>
+                <input type="password" id="confirmPassword" name="confirmPassword"
+                    class="w-full border border-gray-400 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                    placeholder="Confirme sua senha" required>
+            </div>
+
+            <button id="registerBtn" type="button"
+                class="w-full bg-accent text-white py-2 px-4 rounded-md hover:bg-gray-500 transition-all duration-200 font-medium">
+                Cadastrar
+            </button>
+
+            <div class="text-center">
+                <button id="showLoginBtn" type="button"
+                    class="text-primary hover:text-secondary transition-colors duration-200 text-sm">
+                    Já tem conta? Faça login
+                </button>
+            </div>
+        </div>
+
+        <!-- Mensagens -->
+        <div id="message" class="mt-4 p-3 rounded-md text-sm hidden"></div> <!-- Loading -->
+        <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white p-6 rounded-lg flex items-center space-x-3">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
+                <span class="text-secondary">Carregando...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts modularizados -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+
+</html>
