@@ -294,18 +294,27 @@ class DatabaseController {
             console.error('Erro ao criar venda:', error);
             throw error;
         }
-    }
-
-    async listarVendas() {
+    }    async listarVendas() {
         this.ensureReady();
 
-        try {
-            const { data, error } = await this.supabase
+        try {            const { data, error } = await this.supabase
                 .from('vendas')
                 .select(`
                     *,
                     clientes(nome),
-                    produtos(nome)
+                    produtos(nome),
+                    pagamentos(
+                        id,
+                        metodo_pagamento,
+                        status,
+                        valor_total,
+                        valor_pago,
+                        data_vencimento,
+                        data_pagamento,
+                        data_ultimo_pagamento,
+                        numero_parcelas,
+                        observacoes
+                    )
                 `)
                 .order('data_venda', { ascending: false });
 
@@ -315,18 +324,27 @@ class DatabaseController {
             console.error('Erro ao listar vendas:', error);
             throw error;
         }
-    }
-
-    async obterVendasPorPeriodo(dataInicio, dataFim) {
+    }    async obterVendasPorPeriodo(dataInicio, dataFim) {
         this.ensureReady();
 
-        try {
-            const { data, error } = await this.supabase
+        try {            const { data, error } = await this.supabase
                 .from('vendas')
                 .select(`
                     *,
                     clientes(nome),
-                    produtos(nome)
+                    produtos(nome),
+                    pagamentos(
+                        id,
+                        metodo_pagamento,
+                        status,
+                        valor_total,
+                        valor_pago,
+                        data_vencimento,
+                        data_pagamento,
+                        data_ultimo_pagamento,
+                        numero_parcelas,
+                        observacoes
+                    )
                 `)
                 .gte('data_venda', dataInicio)
                 .lte('data_venda', dataFim)
@@ -614,6 +632,66 @@ class DatabaseController {
     async sincronizarDados() {
         // Implementar sincronização se necessário
         console.log('Sincronização de dados não implementada ainda');
+    }
+
+    // MÉTODOS DE DEBUG E DIAGNÓSTICO
+    async verificarTabelasPagamentos() {
+        this.ensureReady();
+        
+        try {
+            console.log('Verificando existência das tabelas de pagamentos...');
+            
+            // Testar se consegue fazer uma query na tabela pagamentos
+            const { data: pagamentos, error: errorPagamentos } = await this.supabase
+                .from('pagamentos')
+                .select('count')
+                .limit(1);
+                
+            console.log('Tabela pagamentos:', errorPagamentos ? 'ERRO - ' + errorPagamentos.message : 'OK');
+            
+            // Testar se consegue fazer uma query na tabela parcelas
+            const { data: parcelas, error: errorParcelas } = await this.supabase
+                .from('parcelas')
+                .select('count')
+                .limit(1);
+                
+            console.log('Tabela parcelas:', errorParcelas ? 'ERRO - ' + errorParcelas.message : 'OK');
+            
+            // Testar se consegue fazer uma query na tabela historico_pagamentos
+            const { data: historico, error: errorHistorico } = await this.supabase
+                .from('historico_pagamentos')
+                .select('count')
+                .limit(1);
+                
+            console.log('Tabela historico_pagamentos:', errorHistorico ? 'ERRO - ' + errorHistorico.message : 'OK');
+            
+            // Testar join entre vendas e pagamentos
+            const { data: vendasComPagamentos, error: errorJoin } = await this.supabase
+                .from('vendas')
+                .select(`
+                    id,
+                    data_venda,
+                    pagamentos(id, metodo_pagamento, status)
+                `)
+                .limit(5);
+                
+            console.log('Join vendas-pagamentos:', errorJoin ? 'ERRO - ' + errorJoin.message : 'OK');
+            console.log('Amostra de vendas com pagamentos:', vendasComPagamentos);
+            
+            return {
+                pagamentos: !errorPagamentos,
+                parcelas: !errorParcelas,
+                historico: !errorHistorico,
+                join: !errorJoin,
+                amostraVendas: vendasComPagamentos
+            };
+            
+        } catch (error) {
+            console.error('Erro ao verificar tabelas:', error);
+            return {
+                erro: error.message
+            };
+        }
     }
 }
 

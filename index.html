@@ -84,22 +84,49 @@
                     </div>
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white shadow-md rounded p-4">
                     <h3 class="text-lg font-semibold text-secondary">Produtos em Estoque</h3>
                     <p class="text-2xl font-bold mt-2" id="total-produtos">0</p>
+                    <p class="text-xs text-gray-500 mt-1">unidades totais</p>
                 </div>
                 <div class="bg-white shadow-md rounded p-4">
-                    <h3 class="text-lg font-semibold text-secondary">Vendas da Data</h3>
-                    <p class="text-2xl font-bold mt-2" id="vendas-dia">R$ 0,00</p>
+                    <h3 class="text-lg font-semibold text-secondary">Vendas Hoje</h3>
+                    <p class="text-2xl font-bold mt-2 text-blue-600" id="vendas-dia">R$ 0,00</p>
                     <p class="text-xs text-gray-500 mt-1" id="data-selecionada-display">Hoje</p>
                 </div>
                 <div class="bg-white shadow-md rounded p-4">
-                    <h3 class="text-lg font-semibold text-secondary">Clientes Cadastrados</h3>
+                    <h3 class="text-lg font-semibold text-secondary">Recebido Hoje</h3>
+                    <p class="text-2xl font-bold mt-2 text-green-600" id="recebido-dia">R$ 0,00</p>
+                    <p class="text-xs text-gray-500 mt-1">pagamentos confirmados</p>
+                </div>
+                <div class="bg-white shadow-md rounded p-4">
+                    <h3 class="text-lg font-semibold text-secondary">Pendente Total</h3>
+                    <p class="text-2xl font-bold mt-2 text-yellow-600" id="pendente-total">R$ 0,00</p>
+                    <p class="text-xs text-gray-500 mt-1">a receber</p>
+                </div>
+            </div>
+            
+            <!-- Resumo de Pagamentos -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white shadow-md rounded p-4">
+                    <h3 class="text-lg font-semibold text-orange-600">Em Atraso</h3>
+                    <p class="text-2xl font-bold mt-2 text-red-600" id="atraso-total">R$ 0,00</p>
+                    <p class="text-xs text-gray-500 mt-1" id="qtd-atraso">0 pagamentos vencidos</p>
+                </div>
+                <div class="bg-white shadow-md rounded p-4">
+                    <h3 class="text-lg font-semibold text-blue-600">Parciais</h3>
+                    <p class="text-2xl font-bold mt-2 text-blue-600" id="parcial-total">R$ 0,00</p>
+                    <p class="text-xs text-gray-500 mt-1" id="qtd-parcial">0 pagamentos parciais</p>
+                </div>
+                <div class="bg-white shadow-md rounded p-4">
+                    <h3 class="text-lg font-semibold text-purple-600">Clientes Cadastrados</h3>
                     <p class="text-2xl font-bold mt-2" id="total-clientes">0</p>
+                    <p class="text-xs text-gray-500 mt-1">clientes ativos</p>
                 </div>
             </div>
             <div class="bg-white shadow-md rounded p-4 overflow-x-auto">
+                <h3 class="text-lg font-semibold mb-4">Vendas Recentes</h3>
                 <table class="min-w-full text-left border-collapse">
                     <thead class="bg-black text-white">
                         <tr>
@@ -108,11 +135,13 @@
                             <th class="border-b py-2 px-2">Produto</th>
                             <th class="border-b py-2 px-2">Qtd</th>
                             <th class="border-b py-2 px-2">Total</th>
+                            <th class="border-b py-2 px-2">Método</th>
+                            <th class="border-b py-2 px-2">Status Pagamento</th>
                         </tr>
                     </thead>
                     <tbody id="dashboard-vendas">
                         <tr>
-                            <td colspan="5" class="py-4 px-2 text-center text-gray-500">Nenhuma venda registrada</td>
+                            <td colspan="7" class="py-4 px-2 text-center text-gray-500">Nenhuma venda registrada</td>
                         </tr>
                     </tbody>
                 </table>
@@ -164,22 +193,151 @@
         <!-- Caixa -->
         <div id="caixa" class="aba hidden">
             <h2 class="text-xl sm:text-2xl font-bold mb-4">Sistema de Vendas e Pagamentos</h2>
-            <div class="bg-white shadow-md rounded p-4 space-y-4">
-                <form class="space-y-3">
-                    <select id="selectCliente" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                        <option value="">Selecione um cliente</option>
-                    </select>
-                    <select id="selectProduto" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                        <option value="">Selecione um produto</option>
-                    </select>
-                    <input id="inputQuantidade" type="number" placeholder="Quantidade"
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm" min="1">
-                    <input id="inputValorTotal" type="number" step="0.01" placeholder="Valor Total (R$)"
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm" readonly>
+            
+            <!-- Formulário Unificado de Venda e Pagamento -->
+            <div class="bg-white shadow-md rounded p-4 mb-4">
+                <h3 class="text-lg font-semibold mb-4">Nova Venda</h3>
+                <form class="space-y-4">
+                    <!-- Dados da Venda -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                            <select id="selectCliente" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
+                                <option value="">Selecione um cliente</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Produto</label>
+                            <select id="selectProduto" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
+                                <option value="">Selecione um produto</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
+                            <input id="inputQuantidade" type="number" placeholder="Quantidade"
+                                class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm" min="1">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Valor Total</label>
+                            <input id="inputValorTotal" type="number" step="0.01" placeholder="Valor Total (R$)"
+                                class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Seção de Pagamento -->
+                    <div class="border-t pt-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-3">Configurações de Pagamento</h4>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Venda</label>
+                                <select id="tipoVendaUnificado" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
+                                    <option value="a_vista">À Vista</option>
+                                    <option value="a_prazo">À Prazo</option>
+                                    <option value="parcelada">Parcelada</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Método de Pagamento</label>
+                                <select id="metodoPagamentoUnificado" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
+                                    <option value="dinheiro">Dinheiro</option>
+                                    <option value="pix">PIX</option>
+                                    <option value="cartao_debito">Cartão de Débito</option>
+                                    <option value="cartao_credito">Cartão de Crédito</option>
+                                    <option value="transferencia">Transferência Bancária</option>
+                                    <option value="boleto">Boleto</option>
+                                </select>
+                            </div>
+                            <div id="divVencimentoUnificado" class="hidden">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Dias para Vencimento</label>
+                                <input id="diasVencimentoUnificado" type="number" min="1" value="30" 
+                                       class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
+                            </div>
+                        </div>
+
+                        <div id="divParcelasUnificado" class="hidden mt-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Número de Parcelas</label>
+                                    <input id="numeroParcelasUnificado" type="number" min="2" max="12" value="2" 
+                                           class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Valor por Parcela</label>
+                                    <input id="valorParcelaUnificado" type="text" readonly
+                                           class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm bg-gray-50"
+                                           placeholder="Calculado automaticamente">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                            <textarea id="observacoesUnificado" rows="2" 
+                                      class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm"
+                                      placeholder="Observações sobre a venda ou pagamento..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Resumo da Operação -->
+                    <div id="resumoOperacao" class="bg-gray-50 p-3 rounded border">
+                        <h5 class="font-medium text-gray-700 mb-2">Resumo da Operação</h5>
+                        <div class="text-sm text-gray-600">
+                            <p><span class="font-medium">Valor Total:</span> <span id="resumoValorTotal">R$ 0,00</span></p>
+                            <p><span class="font-medium">Tipo:</span> <span id="resumoTipo">À Vista</span></p>
+                            <p><span class="font-medium">Status:</span> <span id="resumoStatus" class="font-medium text-green-600">Será pago imediatamente</span></p>
+                        </div>
+                    </div>
+
                     <button type="submit"
-                        class="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 text-sm">Registrar
-                        Venda</button>
+                        class="w-full px-4 py-3 bg-black text-white rounded-md hover:bg-gray-800 text-sm font-medium">
+                        Finalizar Venda e Pagamento
+                    </button>
                 </form>
+            </div>
+
+            <!-- Resumo Financeiro -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div class="bg-white p-4 rounded shadow">
+                    <h3 class="text-sm font-medium text-gray-600">Vendas Hoje</h3>
+                    <p id="vendasHoje" class="text-2xl font-bold text-blue-600">R$ 0,00</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow">
+                    <h3 class="text-sm font-medium text-gray-600">Recebido Hoje</h3>
+                    <p id="recebidoHoje" class="text-2xl font-bold text-green-600">R$ 0,00</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow">
+                    <h3 class="text-sm font-medium text-gray-600">A Receber</h3>
+                    <p id="aReceberTotal" class="text-2xl font-bold text-yellow-600">R$ 0,00</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow">
+                    <h3 class="text-sm font-medium text-gray-600">Em Atraso</h3>
+                    <p id="emAtrasoTotal" class="text-2xl font-bold text-red-600">R$ 0,00</p>
+                </div>
+            </div>
+
+            <!-- Histórico Unificado -->
+            <div class="bg-white shadow-md rounded p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Histórico de Vendas e Pagamentos</h3>
+                    <div class="flex space-x-2">
+                        <select id="filtroStatusVendas" class="border border-gray-400 rounded px-2 py-1 text-sm">
+                            <option value="">Todos os Status</option>
+                            <option value="pago">Pagos</option>
+                            <option value="pendente">Pendentes</option>
+                            <option value="parcial">Parcialmente Pagos</option>
+                            <option value="vencido">Vencidos</option>
+                        </select>
+                        <button onclick="atualizarHistoricoVendas()" 
+                                class="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600">
+                            Atualizar
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-left border-collapse">
                         <thead class="bg-black text-white">
@@ -188,18 +346,17 @@
                                 <th class="border-b py-2 px-2">Cliente</th>
                                 <th class="border-b py-2 px-2">Produto</th>
                                 <th class="border-b py-2 px-2">Qtd</th>
-                                <th class="border-b py-2 px-2">Valor (R$)</th>
-                                <th class="border-b py-2 px-2">Status Pagamento</th>
+                                <th class="border-b py-2 px-2">Valor Total</th>
+                                <th class="border-b py-2 px-2">Método</th>
+                                <th class="border-b py-2 px-2">Status</th>
+                                <th class="border-b py-2 px-2">Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="corpoTabelaVendas">
-                            <tr class="hover:bg-gray-100">
-                                <td class="py-2 px-2">20/06/2025</td>
-                                <td class="py-2 px-2">Exemplo Cliente 1</td>
-                                <td class="py-2 px-2">Exemplo Produto 1</td>
-                                <td class="py-2 px-2">3</td>
-                                <td class="py-2 px-2">45,00</td>
-                                <td class="py-2 px-2 text-green-600">Pago</td>
+                        <tbody id="corpoTabelaVendasUnificado">
+                            <tr>
+                                <td colspan="8" class="border px-2 py-4 text-gray-500 text-center">
+                                    Carregando vendas...
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -380,13 +537,45 @@
     <script src="js/clientes.js"></script>
     <script src="js/pagamentos.js"></script>
     <script src="js/pagamentos-interface.js"></script>
+    <script src="js/venda-pagamento-unificado.js"></script>
     <script src="js/vendas.js"></script>
     <script src="js/app.js"></script>
     <script src="js/global-init.js"></script>
 
     <script>
-        // Adicionar event listeners para o modal de pagamento
+        // Event listeners para interface unificada e modal de pagamento
         document.addEventListener('DOMContentLoaded', function () {
+            // Event listeners para a interface unificada
+            const tipoVendaUnificado = document.getElementById('tipoVendaUnificado');
+            const divVencimentoUnificado = document.getElementById('divVencimentoUnificado');
+            const divParcelasUnificado = document.getElementById('divParcelasUnificado');
+
+            if (tipoVendaUnificado) {
+                tipoVendaUnificado.addEventListener('change', function() {
+                    const valor = this.value;
+                    
+                    if (valor === 'a_vista') {
+                        divVencimentoUnificado.classList.add('hidden');
+                        divParcelasUnificado.classList.add('hidden');
+                    } else if (valor === 'a_prazo') {
+                        divVencimentoUnificado.classList.remove('hidden');
+                        divParcelasUnificado.classList.add('hidden');
+                    } else if (valor === 'parcelada') {
+                        divVencimentoUnificado.classList.remove('hidden');
+                        divParcelasUnificado.classList.remove('hidden');
+                    }
+                });
+            }
+
+            // Event listener para filtro de data no dashboard
+            const inputData = document.getElementById('dataSelecionada');
+            if (inputData) {
+                inputData.addEventListener('change', function() {
+                    filtrarVendasPorData();
+                });
+            }
+
+            // Event listeners para o modal de pagamento original (compatibilidade)
             const tipoVenda = document.getElementById('tipoVenda');
             const divVencimento = document.getElementById('divVencimento');
             const divParcelas = document.getElementById('divParcelas');
@@ -415,6 +604,27 @@
                 });
             }
         });
+
+        // Funções globais para uso nos elementos HTML
+        async function filtrarVendasPorData() {
+            const inputData = document.getElementById('dataSelecionada');
+            if (window.app && inputData) {
+                const dataSelecionada = inputData.value || null;
+                await window.app.definirDataSelecionada(dataSelecionada);
+            }
+        }
+
+        async function resetarFiltroData() {
+            if (window.app) {
+                await window.app.resetarFiltroData();
+            }
+        }
+
+        async function mostrarAba(abaId) {
+            if (window.app) {
+                await window.app.mostrarAba(abaId);
+            }
+        }
     </script>
 </body>
 

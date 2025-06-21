@@ -109,6 +109,17 @@ class AppController {
         this.clienteController = new ClienteController(this.databaseController);
         this.pagamentoController = new PagamentoController(this.databaseController);
         this.pagamentosInterface = new PagamentosInterfaceController(this.pagamentoController, this);
+        
+        // Novo controlador unificado para vendas e pagamentos
+        this.vendaPagamentoUnificado = new VendaPagamentoUnificadoController(
+            this.produtoController,
+            this.clienteController,
+            this.databaseController,
+            this.pagamentoController,
+            this
+        );
+
+        // Controlador de vendas tradicional (mantido para compatibilidade)
         this.vendaController = new VendaController(
             this.produtoController,
             this.clienteController,
@@ -119,6 +130,7 @@ class AppController {
 
         // Tornar disponível globalmente
         window.pagamentosInterface = this.pagamentosInterface;
+        window.vendaPagamentoUnificado = this.vendaPagamentoUnificado;
 
         // Atualizar selects iniciais
         setTimeout(() => {
@@ -169,8 +181,14 @@ class AppController {
         const linkAtivo = document.getElementById(`nav-${abaId}`);
         if (linkAtivo) {
             linkAtivo.classList.add('bg-gray-700');
-        }        // Atualizar selects quando mostrar a aba de vendas
-        if (abaId === 'caixa' && this.vendaController) {
+        }        // Carregar dados da aba Caixa (sistema unificado)
+        if (abaId === 'caixa' && this.vendaPagamentoUnificado) {
+            console.log('Carregando dados da aba Caixa...');
+            await this.vendaPagamentoUnificado.carregarDados();
+        }
+
+        // Atualizar selects quando mostrar a aba de vendas (legacy)
+        if (abaId === 'vendas' && this.vendaController) {
             this.vendaController.atualizarSelects();
         }
 
@@ -183,9 +201,7 @@ class AppController {
         if (abaId === 'dashboard') {
             await this.atualizarDashboard();
         }
-    }
-
-    async atualizarDashboard() {
+    }    async atualizarDashboard() {
         console.log('App: Atualizando dashboard...');
 
         // Mostrar indicador de carregamento
@@ -219,66 +235,8 @@ class AppController {
                 totalClientesEl.textContent = clientes.length;
             }
 
-            // Carregar vendas diretamente do banco de dados
-            let vendas = [];
-
-            // Verificar se database está pronto e tentar carregar vendas
-            if (this.databaseController && this.databaseController.isReady) {
-                console.log('App: Carregando vendas do banco...');
-                try {
-                    vendas = await this.databaseController.listarVendas();
-                    console.log('App: Vendas carregadas:', vendas.length);
-                } catch (error) {
-                    console.error('App: Erro ao carregar vendas do banco:', error);
-                    // Tentar usar dados do VendaController como fallback
-                    if (this.vendaController && this.vendaController.vendas) {
-                        vendas = this.vendaController.vendas;
-                        console.log('App: Usando vendas do VendaController como fallback');
-                    }
-                }
-            } else {
-                console.log('App: Database não disponível, usando dados do VendaController');
-                // Fallback: usar dados do vendaController se disponível
-                if (this.vendaController && this.vendaController.vendas) {
-                    vendas = this.vendaController.vendas;
-                } else {
-                    // Se nem o database nem o vendaController estão prontos, tentar novamente em 2s
-                    console.log('App: Nenhuma fonte de dados disponível, tentando novamente em 2s...');
-                    if (loadingIndicator) {
-                        loadingIndicator.classList.add('hidden');
-                    }
-                    setTimeout(() => this.atualizarDashboard(), 2000);
-                    return;
-                }
-            }
-
-            // Atualizar vendas da data selecionada
-            const dataFiltro = this.dataSelecionada || new Date().toISOString().split('T')[0];
-            const vendasFiltradas = vendas.filter(venda => {
-                const dataVenda = new Date(venda.data_venda).toISOString().split('T')[0];
-                return dataVenda === dataFiltro;
-            });
-
-            const totalVendasData = vendasFiltradas.reduce((total, venda) => total + venda.valor_total, 0);
-            const vendasDiaEl = document.getElementById('vendas-dia');
-            if (vendasDiaEl) {
-                vendasDiaEl.textContent = this.formatarMoeda(totalVendasData);
-            }
-
-            // Atualizar display da data selecionada
-            const dataDisplayEl = document.getElementById('data-selecionada-display');
-            if (dataDisplayEl) {
-                if (this.dataSelecionada) {
-                    const dataFormatada = new Date(this.dataSelecionada + 'T00:00:00').toLocaleDateString('pt-BR');
-                    dataDisplayEl.textContent = dataFormatada;
-                } else {
-                    dataDisplayEl.textContent = 'Hoje';
-                }
-            }
-
-            // Atualizar tabela de últimas vendas (mostrar as da data selecionada ou as 5 mais recentes)
-            const vendasParaTabela = this.dataSelecionada ? vendasFiltradas.slice(0, 10) : vendas.slice(0, 5);
-            this.atualizarUltimasVendas(vendasParaTabela);
+            // Carregar vendas e métricas de pagamento
+            await this.atualizarMetricasVendasPagamentos();
 
             console.log('App: Dashboard atualizado com sucesso');
 
@@ -294,80 +252,207 @@ class AppController {
         }
     }
 
-    atualizarUltimasVendas(vendas) {
-        const tbody = document.getElementById('dashboard-vendas');
-        const tituloVendas = document.getElementById('titulo-vendas');
-        const resumoVendas = document.getElementById('resumo-vendas');
-        const totalVendasData = document.getElementById('total-vendas-data');
-        const valorTotalData = document.getElementById('valor-total-data');
+    async atualizarMetricasVendasPagamentos() {
+        let vendas = [];
+        let pagamentos = [];
 
-        if (!tbody) return;
+        // Carregar dados
+        if (this.databaseController && this.databaseController.isReady) {
+            try {
+                vendas = await this.databaseController.listarVendas();
+                if (this.pagamentoController) {
+                    pagamentos = await this.pagamentoController.listarPagamentos();
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados do banco:', error);
+                // Fallback para dados locais
+                if (this.vendaPagamentoUnificado && this.vendaPagamentoUnificado.vendas) {
+                    vendas = this.vendaPagamentoUnificado.vendas;
+                }
+            }
+        } else {
+            // Fallback: usar dados dos controladores
+            if (this.vendaPagamentoUnificado && this.vendaPagamentoUnificado.vendas) {
+                vendas = this.vendaPagamentoUnificado.vendas;
+            }
+        }
 
-        // Atualizar título da tabela
-        if (tituloVendas) {
+        // Calcular métricas do dia atual
+        const hoje = new Date().toISOString().split('T')[0];
+        const dataFiltro = this.dataSelecionada || hoje;
+        
+        // Métricas de vendas
+        const vendasDia = vendas.filter(venda => {
+            const dataVenda = new Date(venda.data_venda).toISOString().split('T')[0];
+            return dataVenda === dataFiltro;
+        });
+
+        const totalVendasDia = vendasDia.reduce((total, venda) => total + venda.valor_total, 0);
+        
+        // Atualizar vendas do dia
+        const vendasDiaEl = document.getElementById('vendas-dia');
+        if (vendasDiaEl) {
+            vendasDiaEl.textContent = this.formatarMoeda(totalVendasDia);
+        }
+
+        // Métricas de pagamentos
+        let recebidoDia = 0;
+        let pendenteTotal = 0;
+        let atrasoTotal = 0;
+        let parcialTotal = 0;
+        let qtdAtraso = 0;
+        let qtdParcial = 0;
+
+        if (pagamentos.length > 0) {
+            pagamentos.forEach(pagamento => {
+                const dataVenda = pagamento.vendas?.data_venda;
+                const valorRestante = pagamento.valor_total - pagamento.valor_pago;
+                
+                // Recebido no dia (vendas pagas do dia)
+                if (dataVenda === dataFiltro && pagamento.status === 'pago') {
+                    recebidoDia += pagamento.valor_pago;
+                }
+                
+                // Totais gerais
+                if (pagamento.status === 'pendente' || pagamento.status === 'parcial') {
+                    if (new Date(pagamento.data_vencimento) < new Date() || pagamento.status === 'vencido') {
+                        atrasoTotal += valorRestante;
+                        if (pagamento.status === 'vencido' || new Date(pagamento.data_vencimento) < new Date()) {
+                            qtdAtraso++;
+                        }
+                    } else {
+                        pendenteTotal += valorRestante;
+                    }
+                }
+                
+                if (pagamento.status === 'parcial') {
+                    parcialTotal += valorRestante;
+                    qtdParcial++;
+                }
+            });
+        }
+
+        // Atualizar elementos do dashboard
+        this.updateDashboardElement('recebido-dia', recebidoDia);
+        this.updateDashboardElement('pendente-total', pendenteTotal);
+        this.updateDashboardElement('atraso-total', atrasoTotal);
+        this.updateDashboardElement('parcial-total', parcialTotal);
+
+        // Atualizar quantidades
+        const qtdAtrasoEl = document.getElementById('qtd-atraso');
+        if (qtdAtrasoEl) {
+            qtdAtrasoEl.textContent = `${qtdAtraso} pagamento${qtdAtraso !== 1 ? 's' : ''} vencido${qtdAtraso !== 1 ? 's' : ''}`;
+        }
+
+        const qtdParcialEl = document.getElementById('qtd-parcial');
+        if (qtdParcialEl) {
+            qtdParcialEl.textContent = `${qtdParcial} pagamento${qtdParcial !== 1 ? 's' : ''} parcial${qtdParcial !== 1 ? 'is' : ''}`;
+        }
+
+        // Atualizar data selecionada
+        const dataDisplayEl = document.getElementById('data-selecionada-display');
+        if (dataDisplayEl) {
             if (this.dataSelecionada) {
                 const dataFormatada = new Date(this.dataSelecionada + 'T00:00:00').toLocaleDateString('pt-BR');
-                tituloVendas.textContent = `Vendas de ${dataFormatada}`;
+                dataDisplayEl.textContent = dataFormatada;
             } else {
-                tituloVendas.textContent = 'Últimas Vendas';
+                dataDisplayEl.textContent = 'Hoje';
             }
         }
 
-        // Mostrar/ocultar resumo
-        if (resumoVendas) {
-            if (this.dataSelecionada && vendas.length > 0) {
-                resumoVendas.classList.remove('hidden');
-                if (totalVendasData) {
-                    totalVendasData.textContent = `${vendas.length} venda${vendas.length > 1 ? 's' : ''}`;
-                }
-                if (valorTotalData) {
-                    const valorTotal = vendas.reduce((total, venda) => total + venda.valor_total, 0);
-                    valorTotalData.textContent = this.formatarMoeda(valorTotal);
-                }
-            } else {
-                resumoVendas.classList.add('hidden');
-            }
+        // Atualizar tabela de vendas recentes
+        const vendasParaTabela = this.dataSelecionada ? vendasDia.slice(0, 10) : vendas.slice(0, 5);
+        this.atualizarTabelaVendasDashboard(vendasParaTabela, pagamentos);
+    }
+
+    updateDashboardElement(elementId, valor) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = this.formatarMoeda(valor);
         }
+    }
+
+    atualizarTabelaVendasDashboard(vendas, pagamentos = []) {
+        const tbody = document.getElementById('dashboard-vendas');
+        if (!tbody) return;
 
         if (vendas.length === 0) {
             const mensagem = this.dataSelecionada ?
                 'Nenhuma venda registrada para esta data' :
                 'Nenhuma venda registrada';
-            tbody.innerHTML = `<tr><td colspan="5" class="py-4 px-2 text-center text-gray-500">${mensagem}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="py-4 px-2 text-center text-gray-500">${mensagem}</td></tr>`;
             return;
         }
 
         tbody.innerHTML = vendas.map(venda => {
             const dataFormatada = new Date(venda.data_venda).toLocaleDateString('pt-BR');
-            const clienteNome = venda.clientes?.nome || 'Cliente não encontrado';
-            const produtoNome = venda.produtos?.nome || 'Produto não encontrado';
-            const quantidade = venda.quantidade || 1;
+            const clienteNome = venda.clientes?.nome || 'N/A';
+            const produtoNome = venda.produtos?.nome || 'N/A';
+            
+            // Buscar informações de pagamento
+            let metodoPagamento = 'N/A';
+            let statusPagamento = 'N/A';
+            let corStatus = 'text-gray-500';
+            
+            const pagamentoVenda = pagamentos.find(p => p.venda_id === venda.id);
+            if (pagamentoVenda) {
+                metodoPagamento = this.getMetodoTexto(pagamentoVenda.metodo_pagamento);
+                
+                switch(pagamentoVenda.status) {
+                    case 'pago':
+                        statusPagamento = 'Pago';
+                        corStatus = 'text-green-600';
+                        break;
+                    case 'pendente':
+                        statusPagamento = 'Pendente';
+                        corStatus = 'text-yellow-600';
+                        break;
+                    case 'parcial':
+                        statusPagamento = 'Parcial';
+                        corStatus = 'text-blue-600';
+                        break;
+                    case 'vencido':
+                        statusPagamento = 'Vencido';
+                        corStatus = 'text-red-600';
+                        break;
+                }
+            }
 
             return `
-                <tr class="hover:bg-gray-100">
-                    <td class="py-2 px-2">${dataFormatada}</td>
-                    <td class="py-2 px-2">${clienteNome}</td>
-                    <td class="py-2 px-2">${produtoNome}</td>
-                    <td class="py-2 px-2">${quantidade}</td>
-                    <td class="py-2 px-2">${this.formatarMoeda(venda.valor_total)}</td>
+                <tr class="hover:bg-gray-50">
+                    <td class="border px-2 py-1">${dataFormatada}</td>
+                    <td class="border px-2 py-1">${clienteNome}</td>
+                    <td class="border px-2 py-1">${produtoNome}</td>
+                    <td class="border px-2 py-1">${venda.quantidade}</td>
+                    <td class="border px-2 py-1">${this.formatarMoeda(venda.valor_total)}</td>
+                    <td class="border px-2 py-1">${metodoPagamento}</td>
+                    <td class="border px-2 py-1 ${corStatus}">${statusPagamento}</td>
                 </tr>
             `;
         }).join('');
     }
 
-    // Método de debug para verificar estado do sistema
-    debugStatus() {
-        console.log('=== STATUS DO SISTEMA ===');
-        console.log('App inicializado:', this.authInitialized);
-        console.log('Database Controller:', !!this.databaseController);
-        console.log('Database Ready:', this.databaseController?.isReady);
-        console.log('Produto Controller:', !!this.produtoController);
-        console.log('Cliente Controller:', !!this.clienteController);
-        console.log('Venda Controller:', !!this.vendaController);
-        console.log('Auth Controller:', !!window.authController);
-        console.log('Supabase:', !!window.authController?.supabase);
-        console.log('Vendas carregadas:', this.vendaController?.vendas?.length || 0);
-        console.log('==========================');
+    getMetodoTexto(metodo) {
+        const metodoMap = {
+            'dinheiro': 'Dinheiro',
+            'pix': 'PIX',
+            'cartao_debito': 'Cartão Débito',
+            'cartao_credito': 'Cartão Crédito',
+            'transferencia': 'Transferência',
+            'boleto': 'Boleto'
+        };        return metodoMap[metodo] || metodo || 'N/A';
+    }
+
+    // Métodos auxiliares para formatação
+    formatarMoeda(valor) {
+        return `R$ ${valor.toFixed(2).replace('.', ',')}`;
+    }
+
+    formatarData(data) {
+        if (data instanceof Date) {
+            return data.toLocaleDateString('pt-BR');
+        }
+        return data;
     }
 
     // Métodos para filtro por data
@@ -405,42 +490,16 @@ class AppController {
         await this.atualizarDashboard();
     }
 
-    // Métodos utilitários
-    formatarMoeda(valor) {
-        return `R$ ${valor.toFixed(2).replace('.', ',')}`;
-    }
-
-    formatarData(data) {
-        if (data instanceof Date) {
-            return data.toLocaleDateString('pt-BR');
-        }
-        return data;
-    }
-
-    // Relatórios simples
-    gerarRelatorioEstoque() {
-        const produtos = this.produtoController.obterTodos();
-        const estoqueTotal = produtos.reduce((total, produto) => total + (produto.quantidade * produto.preco), 0);
-
-        console.log('=== RELATÓRIO DE ESTOQUE ===');
-        console.log(`Total de produtos: ${produtos.length}`);
-        console.log(`Valor total em estoque: ${this.formatarMoeda(estoqueTotal)}`);
-        produtos.forEach(produto => {
-            console.log(`${produto.nome}: ${produto.quantidade} unidades - ${this.formatarMoeda(produto.preco)} cada`);
-        });
-    }
-
-    gerarRelatorioVendas() {
-        const totalVendas = this.vendaController.calcularTotalVendas();
-        const numeroVendas = this.vendaController.vendas.length;
-
-        console.log('=== RELATÓRIO DE VENDAS ===');
-        console.log(`Total de vendas: ${numeroVendas}`);
-        console.log(`Valor total vendido: ${this.formatarMoeda(totalVendas)}`);
-
-        if (numeroVendas > 0) {
-            console.log(`Ticket médio: ${this.formatarMoeda(totalVendas / numeroVendas)}`);
-        }
+    // Método de debug para verificar estado do sistema
+    debugStatus() {
+        console.log('=== DEBUG STATUS ===');
+        console.log('authController:', !!window.authController);
+        console.log('databaseController:', !!this.databaseController);
+        console.log('produtoController:', !!this.produtoController);
+        console.log('clienteController:', !!this.clienteController);
+        console.log('vendaController:', !!this.vendaController);
+        console.log('vendaPagamentoUnificado:', !!this.vendaPagamentoUnificado);
+        console.log('===================');
     }
 }
 
