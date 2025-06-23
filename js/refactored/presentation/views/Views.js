@@ -644,12 +644,10 @@ export class SaleView extends BaseView {
                 data.setDate(data.getDate() + dias);
                 dueDate = data.toISOString().split('T')[0];
             }
-        }
-
-        return {
-            isInstallment: true,
-            dueDate: dueDate,
-            initialPayment: valorInicial,
+        }        return {
+            type: 'prazo',
+            dueDate: new Date(dueDate),
+            initialValue: valorInicial,
             remainingValue: total - valorInicial
         };
     }
