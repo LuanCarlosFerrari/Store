@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Controle de Estoque e Vendas - Loja</title>
+    <title>Controle de Estoque e Vendas - Loja (Refatorado)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -43,7 +43,7 @@
     <!-- Topbar -->
     <header
         class="fixed top-0 left-0 w-full h-16 bg-black text-white flex items-center justify-between px-4 sm:px-6 shadow-md z-50">
-        <h1 class="text-base sm:text-xl font-semibold">Sistema de Estoque</h1>
+        <h1 class="text-base sm:text-xl font-semibold">Sistema de Estoque (Clean Architecture)</h1>
         <div class="flex items-center space-x-2 sm:space-x-4">
             <span id="userEmail" class="text-xs sm:text-sm text-gray-300"></span>
             <button id="logoutBtn"
@@ -51,620 +51,376 @@
         </div>
     </header>
 
-    <!-- Sidebar (responsiva) -->
-    <aside
-        class="fixed top-16 left-0 w-full sm:w-64 h-12 sm:h-[calc(100vh-4rem)] bg-gray-900 text-white flex sm:flex-col sm:space-y-2 justify-center sm:justify-start gap-1 sm:gap-0 px-2 sm:px-3 items-center sm:items-start overflow-x-auto sm:overflow-visible">
-        <a href="#" onclick="mostrarAba('dashboard')"
-            class="hover:bg-gray-700 px-3 py-2 rounded text-sm sm:w-full text-center sm:text-left whitespace-nowrap">Dashboard</a>
-        <a href="#" onclick="mostrarAba('produtos')"
-            class="hover:bg-gray-700 px-3 py-2 rounded text-sm sm:w-full text-center sm:text-left whitespace-nowrap">Estoque</a>
-        <a href="#" onclick="mostrarAba('clientes')"
-            class="hover:bg-gray-700 px-3 py-2 rounded text-sm sm:w-full text-center sm:text-left whitespace-nowrap">Clientes</a>
-        <a href="#" onclick="mostrarAba('caixa')"
-            class="hover:bg-gray-700 px-3 py-2 rounded text-sm sm:w-full text-center sm:text-left whitespace-nowrap">Caixa</a>
-        <a href="#" onclick="mostrarAba('pagamentos')"
-            class="hover:bg-gray-700 px-3 py-2 rounded text-sm sm:w-full text-center sm:text-left whitespace-nowrap">Pagamentos</a>
-    </aside>
+    <!-- Layout Principal -->
+    <div class="flex pt-16 min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-800 text-white flex-shrink-0 hidden md:block">
+            <nav class="mt-8">
+                <a id="nav-dashboard" href="#" data-tab="dashboard"
+                    class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
+                    <span class="text-sm font-medium">📊 Dashboard</span>
+                </a>
+                <a id="nav-produtos" href="#" data-tab="produtos"
+                    class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
+                    <span class="text-sm font-medium">📦 Produtos</span>
+                </a>
+                <a id="nav-clientes" href="#" data-tab="clientes"
+                    class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
+                    <span class="text-sm font-medium">👥 Clientes</span>
+                </a>
+                <a id="nav-vendas" href="#" data-tab="vendas"
+                    class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
+                    <span class="text-sm font-medium">🛒 Vendas</span>
+                </a>
+                <a id="nav-pagamentos" href="#" data-tab="pagamentos"
+                    class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
+                    <span class="text-sm font-medium">💳 Pagamentos</span>
+                </a>
+            </nav>
+        </aside>
 
-    <!-- Conteúdo Principal -->
-    <main class="sm:ml-64 mt-28 sm:mt-16 px-4 sm:px-6">
-
-        <!-- Dashboard -->
-        <div id="dashboard" class="aba">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
-                <h2 class="text-xl sm:text-2xl font-bold text-black">Dashboard</h2>
-                <div class="flex flex-wrap items-center gap-2">
-                    <label for="dataSelecionada" class="text-sm font-medium text-gray-700">Data:</label>
-                    <input type="date" id="dataSelecionada"
-                        class="border border-gray-400 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-black">
-                    <button onclick="resetarFiltroData()"
-                        class="bg-gray-500 text-white px-2 py-1 rounded text-sm hover:bg-gray-600">Limpar</button>
-                    <div id="dashboard-loading" class="hidden">
-                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white shadow-md rounded p-4">
-                    <h3 class="text-lg font-semibold text-secondary">Produtos em Estoque</h3>
-                    <p class="text-2xl font-bold mt-2" id="total-produtos">0</p>
-                    <p class="text-xs text-gray-500 mt-1">unidades totais</p>
-                </div>
-                <div class="bg-white shadow-md rounded p-4">
-                    <h3 class="text-lg font-semibold text-secondary">Vendas Hoje</h3>
-                    <p class="text-2xl font-bold mt-2 text-blue-600" id="vendas-dia">R$ 0,00</p>
-                    <p class="text-xs text-gray-500 mt-1" id="data-selecionada-display">Hoje</p>
-                </div>
-                <div class="bg-white shadow-md rounded p-4">
-                    <h3 class="text-lg font-semibold text-secondary">Recebido Hoje</h3>
-                    <p class="text-2xl font-bold mt-2 text-green-600" id="recebido-dia">R$ 0,00</p>
-                    <p class="text-xs text-gray-500 mt-1">pagamentos confirmados</p>
-                </div>
-                <div class="bg-white shadow-md rounded p-4">
-                    <h3 class="text-lg font-semibold text-secondary">Pendente Total</h3>
-                    <p class="text-2xl font-bold mt-2 text-yellow-600" id="pendente-total">R$ 0,00</p>
-                    <p class="text-xs text-gray-500 mt-1">a receber</p>
-                </div>
-            </div>
-            
-            <!-- Resumo de Pagamentos -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-white shadow-md rounded p-4">
-                    <h3 class="text-lg font-semibold text-orange-600">Em Atraso</h3>
-                    <p class="text-2xl font-bold mt-2 text-red-600" id="atraso-total">R$ 0,00</p>
-                    <p class="text-xs text-gray-500 mt-1" id="qtd-atraso">0 pagamentos vencidos</p>
-                </div>
-                <div class="bg-white shadow-md rounded p-4">
-                    <h3 class="text-lg font-semibold text-blue-600">Parciais</h3>
-                    <p class="text-2xl font-bold mt-2 text-blue-600" id="parcial-total">R$ 0,00</p>
-                    <p class="text-xs text-gray-500 mt-1" id="qtd-parcial">0 pagamentos parciais</p>
-                </div>
-                <div class="bg-white shadow-md rounded p-4">
-                    <h3 class="text-lg font-semibold text-purple-600">Clientes Cadastrados</h3>
-                    <p class="text-2xl font-bold mt-2" id="total-clientes">0</p>
-                    <p class="text-xs text-gray-500 mt-1">clientes ativos</p>
-                </div>
-            </div>
-            <div class="bg-white shadow-md rounded p-4 overflow-x-auto">
-                <h3 class="text-lg font-semibold mb-4">Vendas Recentes</h3>
-                <table class="min-w-full text-left border-collapse">
-                    <thead class="bg-black text-white">
-                        <tr>
-                            <th class="border-b py-2 px-2">Data</th>
-                            <th class="border-b py-2 px-2">Cliente</th>
-                            <th class="border-b py-2 px-2">Produto</th>
-                            <th class="border-b py-2 px-2">Qtd</th>
-                            <th class="border-b py-2 px-2">Total</th>
-                            <th class="border-b py-2 px-2">Método</th>
-                            <th class="border-b py-2 px-2">Status Pagamento</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dashboard-vendas">
-                        <tr>
-                            <td colspan="7" class="py-4 px-2 text-center text-gray-500">Nenhuma venda registrada</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Produtos -->
-        <div id="produtos" class="aba hidden">
-            <h2 class="text-xl sm:text-2xl font-bold mb-4">Gerenciar Estoque</h2>
-            <div class="bg-white shadow-md rounded p-4 space-y-4">
-                <form id="formProdutos" class="space-y-3">
-                    <input type="text" id="nomeProduto" placeholder="Nome do Produto" required
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                    <input type="number" id="quantidadeProduto" placeholder="Quantidade" required min="0"
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                    <input type="number" id="precoProduto" step="0.01" placeholder="Preço (R$)" required min="0"
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                    <button type="submit"
-                        class="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 text-sm">Adicionar
-                        Produto</button>
-                </form>
-                
-                <!-- Lista de produtos -->
-                <div class="mt-6">
-                    <h3 class="text-lg font-semibold mb-3">Produtos em Estoque</h3>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-left border-collapse">
-                            <thead class="bg-black text-white">
-                                <tr>
-                                    <th class="border-b py-2 px-2">Nome</th>
-                                    <th class="border-b py-2 px-2">Quantidade</th>
-                                    <th class="border-b py-2 px-2">Preço</th>
-                                    <th class="border-b py-2 px-2">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="listaProdutos">
-                                <tr>
-                                    <td colspan="4" class="py-4 px-2 text-center text-gray-500">Carregando produtos...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Clientes -->
-        <div id="clientes" class="aba hidden">
-            <h2 class="text-xl sm:text-2xl font-bold mb-4">Gerenciar Clientes</h2>
-            <div class="bg-white shadow-md rounded p-4 space-y-4">
-                <form id="formClientes" class="space-y-3">
-                    <input type="text" id="nomeCliente" placeholder="Nome do Cliente" required
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                    <input type="text" id="telefoneCliente" placeholder="Telefone"
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                    <input type="email" id="emailCliente" placeholder="E-mail"
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                    <textarea id="enderecoCliente" placeholder="Endereço" rows="3"
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm"></textarea>
-                    <button type="submit"
-                        class="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 text-sm">Adicionar
-                        Cliente</button>
-                </form>
-                
-                <!-- Lista de clientes -->
-                <div class="mt-6">
-                    <h3 class="text-lg font-semibold mb-3">Clientes Cadastrados</h3>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-left border-collapse">
-                            <thead class="bg-black text-white">
-                                <tr>
-                                    <th class="border-b py-2 px-2">Nome</th>
-                                    <th class="border-b py-2 px-2">Telefone</th>
-                                    <th class="border-b py-2 px-2">E-mail</th>
-                                    <th class="border-b py-2 px-2">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="listaClientes">
-                                <tr>
-                                    <td colspan="4" class="py-4 px-2 text-center text-gray-500">Carregando clientes...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Caixa -->
-        <div id="caixa" class="aba hidden">
-            <h2 class="text-xl sm:text-2xl font-bold mb-4">Sistema de Vendas e Pagamentos</h2>
-            
-            <!-- Formulário Unificado de Venda e Pagamento -->
-            <div class="bg-white shadow-md rounded p-4 mb-4">
-                <h3 class="text-lg font-semibold mb-4">Nova Venda</h3>
-                <form class="space-y-4">
-                    <!-- Dados da Venda -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                            <select id="selectCliente" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                                <option value="">Selecione um cliente</option>
-                            </select>
+        <!-- Main Content -->
+        <main class="flex-1 p-4 sm:p-6">
+            <!-- Dashboard -->
+            <div id="dashboard" class="aba">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4 sm:mb-0">Dashboard</h2>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <div class="flex items-center gap-2">
+                            <label for="dataSelecionada" class="text-sm font-medium text-gray-700">Filtrar por
+                                data:</label>
+                            <input type="date" id="dataSelecionada"
+                                class="border border-gray-300 rounded px-3 py-1 text-sm">
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Produto</label>
-                            <select id="selectProduto" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                                <option value="">Selecione um produto</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
-                            <input id="inputQuantidade" type="number" placeholder="Quantidade"
-                                class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm" min="1">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Valor Total</label>
-                            <input id="inputValorTotal" type="number" step="0.01" placeholder="Valor Total (R$)"
-                                class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm" readonly>
-                        </div>
-                    </div>
-
-                    <!-- Seção de Pagamento -->
-                    <div class="border-t pt-4">
-                        <h4 class="text-md font-medium text-gray-700 mb-3">Configurações de Pagamento</h4>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Venda</label>
-                                <select id="tipoVendaUnificado" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                                    <option value="a_vista">À Vista</option>
-                                    <option value="a_prazo">À Prazo</option>
-                                    <option value="parcelada">Parcelada</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Método de Pagamento</label>
-                                <select id="metodoPagamentoUnificado" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                                    <option value="dinheiro">Dinheiro</option>
-                                    <option value="pix">PIX</option>
-                                    <option value="cartao_debito">Cartão de Débito</option>
-                                    <option value="cartao_credito">Cartão de Crédito</option>
-                                    <option value="transferencia">Transferência Bancária</option>
-                                    <option value="boleto">Boleto</option>
-                                </select>
-                            </div>
-                            <div id="divVencimentoUnificado" class="hidden">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Dias para Vencimento</label>
-                                <input id="diasVencimentoUnificado" type="number" min="1" value="30" 
-                                       class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                            </div>
-                        </div>
-
-                        <div id="divParcelasUnificado" class="hidden mt-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Número de Parcelas</label>
-                                    <input id="numeroParcelasUnificado" type="number" min="2" max="12" value="2" 
-                                           class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Valor por Parcela</label>
-                                    <input id="valorParcelaUnificado" type="text" readonly
-                                           class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm bg-gray-50"
-                                           placeholder="Calculado automaticamente">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                            <textarea id="observacoesUnificado" rows="2" 
-                                      class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm"
-                                      placeholder="Observações sobre a venda ou pagamento..."></textarea>
-                        </div>
-                    </div>
-
-                    <!-- Resumo da Operação -->
-                    <div id="resumoOperacao" class="bg-gray-50 p-3 rounded border">
-                        <h5 class="font-medium text-gray-700 mb-2">Resumo da Operação</h5>
-                        <div class="text-sm text-gray-600">
-                            <p><span class="font-medium">Valor Total:</span> <span id="resumoValorTotal">R$ 0,00</span></p>
-                            <p><span class="font-medium">Tipo:</span> <span id="resumoTipo">À Vista</span></p>
-                            <p><span class="font-medium">Status:</span> <span id="resumoStatus" class="font-medium text-green-600">Será pago imediatamente</span></p>
-                        </div>
-                    </div>
-
-                    <button type="submit"
-                        class="w-full px-4 py-3 bg-black text-white rounded-md hover:bg-gray-800 text-sm font-medium">
-                        Finalizar Venda e Pagamento
-                    </button>
-                </form>
-            </div>
-
-            <!-- Resumo Financeiro -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div class="bg-white p-4 rounded shadow">
-                    <h3 class="text-sm font-medium text-gray-600">Vendas Hoje</h3>
-                    <p id="vendasHoje" class="text-2xl font-bold text-blue-600">R$ 0,00</p>
-                </div>
-                <div class="bg-white p-4 rounded shadow">
-                    <h3 class="text-sm font-medium text-gray-600">Recebido Hoje</h3>
-                    <p id="recebidoHoje" class="text-2xl font-bold text-green-600">R$ 0,00</p>
-                </div>
-                <div class="bg-white p-4 rounded shadow">
-                    <h3 class="text-sm font-medium text-gray-600">A Receber</h3>
-                    <p id="aReceberTotal" class="text-2xl font-bold text-yellow-600">R$ 0,00</p>
-                </div>
-                <div class="bg-white p-4 rounded shadow">
-                    <h3 class="text-sm font-medium text-gray-600">Em Atraso</h3>
-                    <p id="emAtrasoTotal" class="text-2xl font-bold text-red-600">R$ 0,00</p>
-                </div>
-            </div>
-
-            <!-- Histórico Unificado -->
-            <div class="bg-white shadow-md rounded p-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold">Histórico de Vendas e Pagamentos</h3>
-                    <div class="flex space-x-2">
-                        <select id="filtroStatusVendas" class="border border-gray-400 rounded px-2 py-1 text-sm">
-                            <option value="">Todos os Status</option>
-                            <option value="pago">Pagos</option>
-                            <option value="pendente">Pendentes</option>
-                            <option value="parcial">Parcialmente Pagos</option>
-                            <option value="vencido">Vencidos</option>
-                        </select>
-                        <button onclick="atualizarHistoricoVendas()" 
-                                class="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600">
-                            Atualizar
+                        <button onclick="resetarFiltroData()"
+                            class="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">
+                            Limpar Filtro
                         </button>
                     </div>
                 </div>
-                
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-left border-collapse">
-                        <thead class="bg-black text-white">
-                            <tr>
-                                <th class="border-b py-2 px-2">Data</th>
-                                <th class="border-b py-2 px-2">Cliente</th>
-                                <th class="border-b py-2 px-2">Produto</th>
-                                <th class="border-b py-2 px-2">Qtd</th>
-                                <th class="border-b py-2 px-2">Valor Total</th>
-                                <th class="border-b py-2 px-2">Método</th>
-                                <th class="border-b py-2 px-2">Status</th>
-                                <th class="border-b py-2 px-2">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="corpoTabelaVendasUnificado">
-                            <tr>
-                                <td colspan="8" class="border px-2 py-4 text-gray-500 text-center">
-                                    Carregando vendas...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+
+                <!-- Loading Indicator -->
+                <div id="dashboard-loading" class="hidden">
+                    <div class="flex justify-center items-center py-8">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                        <span class="ml-2 text-gray-600">Carregando dashboard...</span>
+                    </div>
+                </div>
+
+                <!-- Messages Container -->
+                <div id="dashboard-messages"></div>
+
+                <!-- Métricas Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Produtos</h3>
+                        <p id="total-produtos" class="text-2xl font-bold text-gray-900 mt-2">-</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Clientes</h3>
+                        <p id="total-clientes" class="text-2xl font-bold text-gray-900 mt-2">-</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                            Vendas <span id="data-selecionada-display">Hoje</span>
+                        </h3>
+                        <p id="vendas-dia" class="text-2xl font-bold text-gray-900 mt-2">-</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                            Recebido <span id="data-selecionada-display-2">Hoje</span>
+                        </h3>
+                        <p id="recebido-dia" class="text-2xl font-bold text-gray-900 mt-2">-</p>
+                    </div>
+                </div>
+
+                <!-- Métricas de Pagamento -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-orange-500">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Pendente</h3>
+                        <p id="pendente-total" class="text-2xl font-bold text-gray-900 mt-2">-</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Em Atraso</h3>
+                        <p id="atraso-total" class="text-2xl font-bold text-gray-900 mt-2">-</p>
+                        <p id="qtd-atraso" class="text-xs text-gray-500 mt-1">-</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-indigo-500">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Parcial</h3>
+                        <p id="parcial-total" class="text-2xl font-bold text-gray-900 mt-2">-</p>
+                        <p id="qtd-parcial" class="text-xs text-gray-500 mt-1">-</p>
+                    </div>
+                </div>
+
+                <!-- Vendas Recentes -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Vendas Recentes</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full table-auto">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="border px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Data</th>
+                                    <th class="border px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Cliente</th>
+                                    <th class="border px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Produto</th>
+                                    <th class="border px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Qtd</th>
+                                    <th class="border px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Total</th>
+                                    <th class="border px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Método</th>
+                                    <th class="border px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-vendas">
+                                <tr>
+                                    <td colspan="7" class="py-4 px-2 text-center text-gray-500">Carregando vendas...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Pagamentos -->
-        <div id="pagamentos" class="aba hidden">
-            <h2 class="text-xl sm:text-2xl font-bold mb-4">Gerenciamento de Pagamentos</h2>
+            <!-- Produtos -->
+            <div id="produtos" class="aba hidden">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Gerenciar Produtos</h2>
 
-            <!-- Filtros -->
-            <div class="bg-white shadow-md rounded p-4 mb-4">
-                <h3 class="text-lg font-semibold mb-3">Filtros</h3>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <select id="filtroStatusPagamento" class="border border-gray-400 rounded-md px-3 py-2 text-sm">
-                        <option value="">Todos os Status</option>
-                        <option value="pendente">Pendentes</option>
-                        <option value="pago">Pagos</option>
-                        <option value="parcial">Parcialmente Pagos</option>
-                        <option value="vencido">Vencidos</option>
-                        <option value="cancelado">Cancelados</option>
-                    </select>
+                <!-- Messages Container -->
+                <div id="products-messages"></div>
 
-                    <select id="filtroMetodoPagamento" class="border border-gray-400 rounded-md px-3 py-2 text-sm">
-                        <option value="">Todos os Métodos</option>
-                        <option value="dinheiro">Dinheiro</option>
-                        <option value="pix">PIX</option>
-                        <option value="cartao_debito">Cartão de Débito</option>
-                        <option value="cartao_credito">Cartão de Crédito</option>
-                        <option value="transferencia">Transferência</option>
-                        <option value="boleto">Boleto</option>
-                    </select>
+                <!-- Loading Indicator -->
+                <div id="products-loading" class="hidden">
+                    <div class="flex justify-center items-center py-4">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                        <span class="ml-2 text-gray-600">Carregando produtos...</span>
+                    </div>
+                </div>
 
-                    <input type="date" id="filtroDataInicio" class="border border-gray-400 rounded-md px-3 py-2 text-sm"
-                        placeholder="Data Início">
+                <!-- Formulário -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Adicionar Produto</h3>
+                    <form class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <input type="text" name="nome" placeholder="Nome do produto" required
+                            class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="number" name="quantidade" placeholder="Quantidade" required min="0"
+                            class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="number" name="preco" placeholder="Preço" required min="0" step="0.01"
+                            class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="submit"
+                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                            Adicionar Produto
+                        </button>
+                    </form>
+                </div>
 
-                    <button onclick="aplicarFiltrosPagamentos()"
-                        class="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 text-sm">
-                        Filtrar
-                    </button>
+                <!-- Lista de Produtos -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Produtos Cadastrados</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full table-auto">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="border px-4 py-2 text-left">Nome</th>
+                                    <th class="border px-4 py-2 text-left">Quantidade</th>
+                                    <th class="border px-4 py-2 text-left">Preço Unit.</th>
+                                    <th class="border px-4 py-2 text-left">Valor Total</th>
+                                    <th class="border px-4 py-2 text-left">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="produtos-lista">
+                                <tr>
+                                    <td colspan="5" class="py-4 text-center text-gray-500">Carregando produtos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- Resumo Financeiro -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div class="bg-white p-4 rounded shadow">
-                    <h3 class="text-sm font-medium text-gray-600">Total a Receber</h3>
-                    <p id="totalReceber" class="text-2xl font-bold text-blue-600">R$ 0,00</p>
+            <!-- Clientes -->
+            <div id="clientes" class="aba hidden">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Gerenciar Clientes</h2>
+
+                <!-- Messages Container -->
+                <div id="customers-messages"></div>
+
+                <!-- Loading Indicator -->
+                <div id="customers-loading" class="hidden">
+                    <div class="flex justify-center items-center py-4">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                        <span class="ml-2 text-gray-600">Carregando clientes...</span>
+                    </div>
                 </div>
-                <div class="bg-white p-4 rounded shadow">
-                    <h3 class="text-sm font-medium text-gray-600">Total Recebido</h3>
-                    <p id="totalRecebido" class="text-2xl font-bold text-green-600">R$ 0,00</p>
+
+                <!-- Formulário -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Adicionar Cliente</h3>
+                    <form class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <input type="text" name="nome" placeholder="Nome do cliente" required
+                            class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="email" name="email" placeholder="E-mail (opcional)"
+                            class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="tel" name="telefone" placeholder="Telefone (opcional)"
+                            class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="submit"
+                            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors">
+                            Adicionar Cliente
+                        </button>
+                    </form>
                 </div>
-                <div class="bg-white p-4 rounded shadow">
-                    <h3 class="text-sm font-medium text-gray-600">Em Atraso</h3>
-                    <p id="totalAtraso" class="text-2xl font-bold text-red-600">R$ 0,00</p>
-                </div>
-                <div class="bg-white p-4 rounded shadow">
-                    <h3 class="text-sm font-medium text-gray-600">Parcialmente Pago</h3>
-                    <p id="totalParcial" class="text-2xl font-bold text-yellow-600">R$ 0,00</p>
+
+                <!-- Lista de Clientes -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Clientes Cadastrados</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full table-auto">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="border px-4 py-2 text-left">Nome</th>
+                                    <th class="border px-4 py-2 text-left">E-mail</th>
+                                    <th class="border px-4 py-2 text-left">Telefone</th>
+                                    <th class="border px-4 py-2 text-left">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientes-lista">
+                                <tr>
+                                    <td colspan="4" class="py-4 text-center text-gray-500">Carregando clientes...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- Lista de Pagamentos -->
-            <div class="bg-white shadow-md rounded p-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold">Lista de Pagamentos</h3>
-                    <button onclick="verificarPagamentosVencidos()"
-                        class="px-3 py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600">
-                        Verificar Vencidos
-                    </button>
+            <!-- Vendas -->
+            <div id="vendas" class="aba hidden">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Registrar Vendas</h2>
+
+                <!-- Messages Container -->
+                <div id="sales-messages"></div>
+
+                <!-- Loading Indicator -->
+                <div id="sales-loading" class="hidden">
+                    <div class="flex justify-center items-center py-4">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                        <span class="ml-2 text-gray-600">Carregando vendas...</span>
+                    </div>
                 </div>
 
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-left border-collapse">
-                        <thead class="bg-black text-white">
-                            <tr>
-                                <th class="border-b py-2 px-2">Data Venda</th>
-                                <th class="border-b py-2 px-2">Cliente</th>
-                                <th class="border-b py-2 px-2">Produto</th>
-                                <th class="border-b py-2 px-2">Valor Total</th>
-                                <th class="border-b py-2 px-2">Valor Pago</th>
-                                <th class="border-b py-2 px-2">Vencimento</th>
-                                <th class="border-b py-2 px-2">Status</th>
-                                <th class="border-b py-2 px-2">Método</th>
-                                <th class="border-b py-2 px-2">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="corpoTabelaPagamentos">
-                            <tr>
-                                <td colspan="9" class="border px-2 py-4 text-gray-500 text-center">
-                                    Carregando pagamentos...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- Formulário de Venda -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Nova Venda</h3>
+                    <form class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <select name="cliente" id="cliente" required
+                            class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Selecione um cliente</option>
+                        </select>
+                        <select name="produto" id="produto" required
+                            class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Selecione um produto</option>
+                        </select>
+                        <input type="number" name="quantidade" placeholder="Quantidade" required min="1"
+                            class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="number" name="valor_total" placeholder="Valor Total" required min="0" step="0.01"
+                            readonly class="border border-gray-300 rounded px-3 py-2 bg-gray-100 focus:outline-none">
+                        <button type="submit"
+                            class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-colors">
+                            Registrar Venda
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Histórico de Vendas -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Histórico de Vendas</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full table-auto">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="border px-4 py-2 text-left">Data</th>
+                                    <th class="border px-4 py-2 text-left">Cliente</th>
+                                    <th class="border px-4 py-2 text-left">Produto</th>
+                                    <th class="border px-4 py-2 text-left">Quantidade</th>
+                                    <th class="border px-4 py-2 text-left">Valor Total</th>
+                                    <th class="border px-4 py-2 text-left">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendas-lista">
+                                <tr>
+                                    <td colspan="6" class="py-4 text-center text-gray-500">Carregando vendas...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
 
-    </main>
+            <!-- Pagamentos -->
+            <div id="pagamentos" class="aba hidden">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Gerenciar Pagamentos</h2>
 
-    <!-- Modal de Pagamento -->
-    <div id="modalPagamento" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold">Configurar Pagamento</h3>
-                <button id="fecharModalPagamento" class="text-gray-500 hover:text-gray-700">
-                    <span class="text-xl">&times;</span>
-                </button>
+                <!-- Messages Container -->
+                <div id="payments-messages"></div>
+
+                <!-- Loading Indicator -->
+                <div id="payments-loading" class="hidden">
+                    <div class="flex justify-center items-center py-4">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                        <span class="ml-2 text-gray-600">Carregando pagamentos...</span>
+                    </div>
+                </div>
+
+                <!-- Lista de Pagamentos -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Pagamentos</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full table-auto">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="border px-4 py-2 text-left">Vencimento</th>
+                                    <th class="border px-4 py-2 text-left">Valor Total</th>
+                                    <th class="border px-4 py-2 text-left">Valor Pago</th>
+                                    <th class="border px-4 py-2 text-left">Restante</th>
+                                    <th class="border px-4 py-2 text-left">Método</th>
+                                    <th class="border px-4 py-2 text-left">Status</th>
+                                    <th class="border px-4 py-2 text-left">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pagamentos-lista">
+                                <tr>
+                                    <td colspan="7" class="py-4 text-center text-gray-500">Carregando pagamentos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
+        </main>
+    </div> <!-- Scripts -->
+    <script src="js/store-refactored-bundled.js"></script>
 
-            <div class="mb-4">
-                <p class="text-sm text-gray-600">Valor Total:</p>
-                <p id="valorTotalModal" class="text-xl font-bold text-green-600">R$ 0,00</p>
-            </div>
-
-            <form id="formPagamento" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Venda</label>
-                    <select id="tipoVenda" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                        <option value="a_vista">À Vista</option>
-                        <option value="a_prazo">À Prazo</option>
-                        <option value="parcelada">Parcelada</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Método de Pagamento</label>
-                    <select id="metodoPagamento" class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                        <option value="dinheiro">Dinheiro</option>
-                        <option value="pix">PIX</option>
-                        <option value="cartao_debito">Cartão de Débito</option>
-                        <option value="cartao_credito">Cartão de Crédito</option>
-                        <option value="transferencia">Transferência Bancária</option>
-                        <option value="boleto">Boleto</option>
-                    </select>
-                </div>
-
-                <div id="divVencimento" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Dias para Vencimento</label>
-                    <input id="diasVencimento" type="number" min="1" value="30"
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                </div>
-
-                <div id="divParcelas" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Número de Parcelas</label>
-                    <input id="numeroParcelas" type="number" min="2" max="12" value="2"
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                    <textarea id="observacoesPagamento" rows="3"
-                        class="w-full border border-gray-400 rounded-md px-3 py-2 text-sm"
-                        placeholder="Observações sobre o pagamento..."></textarea>
-                </div>
-
-                <div class="flex space-x-3 pt-4">
-                    <button type="button" id="btnCancelarPagamento"
-                        class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
-                        Cancelar
-                    </button>
-                    <button type="submit" class="flex-1 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800">
-                        Confirmar Venda
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Scripts modularizados -->
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/database.js"></script>
-    <script src="js/produtos.js"></script>
-    <script src="js/clientes.js"></script>
-    <script src="js/pagamentos.js"></script>
-    <script src="js/pagamentos-interface.js"></script>
-    <script src="js/venda-pagamento-unificado.js"></script>
-    <script src="js/vendas.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/global-init.js"></script>
-
+    <!-- Script para compatibilidade com formulários (temporary) -->
     <script>
-        // Event listeners para interface unificada e modal de pagamento
-        document.addEventListener('DOMContentLoaded', function () {
-            // Event listeners para a interface unificada
-            const tipoVendaUnificado = document.getElementById('tipoVendaUnificado');
-            const divVencimentoUnificado = document.getElementById('divVencimentoUnificado');
-            const divParcelasUnificado = document.getElementById('divParcelasUnificado');
+        // Atualizar valor total na venda
+        document.addEventListener('change', function (e) {
+            if (e.target.name === 'produto' || e.target.name === 'quantidade') {
+                const produtoSelect = document.querySelector('select[name="produto"]');
+                const quantidadeInput = document.querySelector('input[name="quantidade"]');
+                const valorTotalInput = document.querySelector('input[name="valor_total"]');
 
-            if (tipoVendaUnificado) {
-                tipoVendaUnificado.addEventListener('change', function() {
-                    const valor = this.value;
-                    
-                    if (valor === 'a_vista') {
-                        divVencimentoUnificado.classList.add('hidden');
-                        divParcelasUnificado.classList.add('hidden');
-                    } else if (valor === 'a_prazo') {
-                        divVencimentoUnificado.classList.remove('hidden');
-                        divParcelasUnificado.classList.add('hidden');
-                    } else if (valor === 'parcelada') {
-                        divVencimentoUnificado.classList.remove('hidden');
-                        divParcelasUnificado.classList.remove('hidden');
-                    }
-                });
-            }
-
-            // Event listener para filtro de data no dashboard
-            const inputData = document.getElementById('dataSelecionada');
-            if (inputData) {
-                inputData.addEventListener('change', function() {
-                    filtrarVendasPorData();
-                });
-            }
-
-            // Event listeners para o modal de pagamento original (compatibilidade)
-            const tipoVenda = document.getElementById('tipoVenda');
-            const divVencimento = document.getElementById('divVencimento');
-            const divParcelas = document.getElementById('divParcelas');
-            const btnCancelarPagamento = document.getElementById('btnCancelarPagamento');
-
-            if (tipoVenda) {
-                tipoVenda.addEventListener('change', function () {
-                    const valor = this.value;
-
-                    if (valor === 'a_vista') {
-                        divVencimento.classList.add('hidden');
-                        divParcelas.classList.add('hidden');
-                    } else if (valor === 'a_prazo') {
-                        divVencimento.classList.remove('hidden');
-                        divParcelas.classList.add('hidden');
-                    } else if (valor === 'parcelada') {
-                        divVencimento.classList.remove('hidden');
-                        divParcelas.classList.remove('hidden');
-                    }
-                });
-            }
-
-            if (btnCancelarPagamento) {
-                btnCancelarPagamento.addEventListener('click', function () {
-                    document.getElementById('modalPagamento').classList.add('hidden');
-                });
+                if (produtoSelect.value && quantidadeInput.value) {
+                    const preco = parseFloat(produtoSelect.selectedOptions[0]?.dataset.price || 0);
+                    const quantidade = parseInt(quantidadeInput.value);
+                    const total = preco * quantidade;
+                    valorTotalInput.value = total.toFixed(2);
+                }
             }
         });
-
-        // Funções globais para uso nos elementos HTML
-        async function filtrarVendasPorData() {
-            const inputData = document.getElementById('dataSelecionada');
-            if (window.app && inputData) {
-                const dataSelecionada = inputData.value || null;
-                await window.app.definirDataSelecionada(dataSelecionada);
-            }
-        }
-
-        async function resetarFiltroData() {
-            if (window.app) {
-                await window.app.resetarFiltroData();
-            }
-        }
-
-        async function mostrarAba(abaId) {
-            if (window.app) {
-                await window.app.mostrarAba(abaId);
-            }
-        }
     </script>
 </body>
 
