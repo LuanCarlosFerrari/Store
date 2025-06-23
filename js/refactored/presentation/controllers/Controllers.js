@@ -173,6 +173,11 @@ export class SaleController {
             const user = await this.authService.getCurrentUser();
             saleData.userId = user?.id;
 
+            // Compatibilidade: converter dados do novo formato se necessário
+            if (saleData.unitPrice && !saleData.totalValue) {
+                saleData.totalValue = saleData.unitPrice * saleData.quantity;
+            }
+
             const sale = await this.saleUseCases.createSale(saleData);
 
             // Criar automaticamente um pagamento para a venda
@@ -201,8 +206,6 @@ export class SaleController {
                 }
             }
 
-            this.view?.showSuccess('Venda realizada com sucesso!');
-            await this.loadSales(); // Recarregar lista
             return sale;
         } catch (error) {
             this.view?.showError('Erro ao realizar venda: ' + error.message);

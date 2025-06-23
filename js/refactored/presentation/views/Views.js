@@ -182,10 +182,228 @@ export class SaleView extends BaseView {
         this.loadingElement = document.getElementById('sales-loading');
         this.messageContainer = document.getElementById('sales-messages');
         this.salesContainer = document.getElementById('vendas-lista');
+
+        // Elementos da nova interface de venda
+        this.saleProducts = [];
+        this.setupNewSaleInterface();
     }
 
-    displaySales(sales) {
-        if (!this.salesContainer) return; if (sales.length === 0) {
+    setupNewSaleInterface() {
+        // Cache de elementos do formulário de venda
+        this.productSelect = document.getElementById('produto-select');
+        this.quantityInput = document.getElementById('quantidade-input');
+        this.unitPriceInput = document.getElementById('preco-unitario');
+        this.addProductBtn = document.getElementById('adicionar-produto');
+        this.productsTable = document.getElementById('produtos-venda');
+        this.totalElement = document.getElementById('total-venda');
+        this.finalizeSaleBtn = document.getElementById('finalizar-venda');
+        this.noProductsRow = document.getElementById('no-produtos-row');
+
+        // Event listeners
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        // Atualizar preço quando produto for selecionado
+        if (this.productSelect) {
+            this.productSelect.addEventListener('change', () => {
+                const selectedOption = this.productSelect.selectedOptions[0];
+                if (selectedOption && selectedOption.value) {
+                    const price = parseFloat(selectedOption.dataset.price || 0);
+                    this.unitPriceInput.value = price.toFixed(2);
+                } else {
+                    this.unitPriceInput.value = '';
+                }
+            });
+        }
+
+        // Adicionar produto à venda
+        if (this.addProductBtn) {
+            this.addProductBtn.addEventListener('click', () => {
+                this.addProductToSale();
+            });
+        }
+
+        // Enter no campo quantidade adiciona produto
+        if (this.quantityInput) {
+            this.quantityInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.addProductToSale();
+                }
+            });
+        }
+    } addProductToSale() {
+        const productId = this.productSelect?.value;
+        const productOption = this.productSelect?.selectedOptions[0];
+        const productName = productOption?.text;
+        const quantity = parseInt(this.quantityInput?.value || 0);
+        const unitPrice = parseFloat(this.unitPriceInput?.value || 0);
+
+        // Validações
+        if (!productId) {
+            this.showError('Selecione um produto');
+            return;
+        }
+
+        if (quantity <= 0) {
+            this.showError('Quantidade deve ser maior que zero');
+            return;
+        }
+
+        if (unitPrice <= 0) {
+            this.showError('Preço deve ser maior que zero');
+            return;
+        }
+
+        // Verificar estoque disponível
+        const availableStock = this.getAvailableStock(productOption);
+        const existingProduct = this.saleProducts.find(p => p.productId === productId);
+        const currentQuantityInSale = existingProduct ? existingProduct.quantity : 0;
+        const totalQuantity = currentQuantityInSale + quantity;
+
+        if (totalQuantity > availableStock) {
+            this.showError(`Estoque insuficiente. Disponível: ${availableStock}, já adicionado: ${currentQuantityInSale}`);
+            return;
+        }
+
+        // Verificar se produto já foi adicionado
+        const existingProductIndex = this.saleProducts.findIndex(p => p.productId === productId);
+
+        if (existingProductIndex >= 0) {
+            // Atualizar quantidade existente
+            this.saleProducts[existingProductIndex].quantity += quantity;
+            this.saleProducts[existingProductIndex].subtotal =
+                this.saleProducts[existingProductIndex].quantity * this.saleProducts[existingProductIndex].unitPrice;
+        } else {
+            // Adicionar novo produto
+            this.saleProducts.push({
+                productId,
+                productName: productName.split(' (Estoque:')[0], // Remove info de estoque do nome
+                quantity,
+                unitPrice,
+                subtotal: quantity * unitPrice
+            });
+        }
+
+        // Atualizar interface
+        this.updateProductsTable();
+        this.updateTotal();
+        this.clearProductForm();
+        this.updateFinalizeSaleButton();
+    }
+
+    getAvailableStock(productOption) {
+        if (!productOption) return 0;
+
+        // Extrair o número do estoque do texto da opção
+        const stockMatch = productOption.text.match(/Estoque:\s*(\d+)/); return stockMatch ? parseInt(stockMatch[1]) : 0;
+    }
+
+    removeProductFromSale(index) {
+        this.saleProducts.splice(index, 1);
+        this.updateProductsTable();
+        this.updateTotal();
+        this.updateFinalizeSaleButton();
+    }
+
+    updateProductsTable() {
+        if (!this.productsTable) return;
+
+        // Esconder linha "nenhum produto" se houver produtos
+        if (this.noProductsRow) {
+            this.noProductsRow.style.display = this.saleProducts.length > 0 ? 'none' : '';
+        }
+
+        // Remover linhas de produtos existentes (exceto a primeira que é o "nenhum produto")
+        const existingRows = this.productsTable.querySelectorAll('tr:not(#no-produtos-row)');
+        existingRows.forEach(row => row.remove());
+
+        // Adicionar produtos
+        this.saleProducts.forEach((product, index) => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50';
+            row.innerHTML = `
+                <td class="px-4 py-2 border-b">${product.productName}</td>
+                <td class="px-4 py-2 border-b">R$ ${product.unitPrice.toFixed(2).replace('.', ',')}</td>
+                <td class="px-4 py-2 border-b">${product.quantity}</td>
+                <td class="px-4 py-2 border-b">R$ ${product.subtotal.toFixed(2).replace('.', ',')}</td>
+                <td class="px-4 py-2 border-b">
+                    <button class="remove-product-btn bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600" 
+                            data-index="${index}">
+                        Remover
+                    </button>
+                </td>
+            `;
+
+            // Event listener para remover produto
+            const removeBtn = row.querySelector('.remove-product-btn');
+            removeBtn.addEventListener('click', () => {
+                this.removeProductFromSale(index);
+            });
+
+            this.productsTable.appendChild(row);
+        });
+    }
+
+    updateTotal() {
+        const total = this.saleProducts.reduce((sum, product) => sum + product.subtotal, 0);
+        if (this.totalElement) {
+            this.totalElement.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        }
+        return total;
+    }
+
+    updateFinalizeSaleButton() {
+        if (this.finalizeSaleBtn) {
+            const hasProducts = this.saleProducts.length > 0;
+            this.finalizeSaleBtn.disabled = !hasProducts;
+        }
+    }
+
+    clearProductForm() {
+        if (this.productSelect) this.productSelect.value = '';
+        if (this.quantityInput) this.quantityInput.value = '1';
+        if (this.unitPriceInput) this.unitPriceInput.value = '';
+    }
+
+    clearSaleForm() {
+        this.saleProducts = [];
+        this.updateProductsTable();
+        this.updateTotal();
+        this.updateFinalizeSaleButton();
+        this.clearProductForm();
+
+        // Limpar seleção de cliente
+        const customerSelect = document.getElementById('cliente');
+        if (customerSelect) customerSelect.value = '';
+
+        // Resetar método de pagamento
+        const paymentMethodSelect = document.getElementById('payment-method');
+        if (paymentMethodSelect) paymentMethodSelect.value = 'pix';
+    }
+
+    getSaleData() {
+        const customerSelect = document.getElementById('cliente');
+        const paymentMethodSelect = document.getElementById('payment-method');
+
+        if (!customerSelect?.value) {
+            throw new Error('Selecione um cliente');
+        }
+
+        if (this.saleProducts.length === 0) {
+            throw new Error('Adicione pelo menos um produto à venda');
+        }
+
+        return {
+            customerId: customerSelect.value,
+            products: this.saleProducts,
+            paymentMethod: paymentMethodSelect?.value || 'pix',
+            totalValue: this.updateTotal()
+        };
+    } displaySales(sales) {
+        if (!this.salesContainer) return;
+
+        if (sales.length === 0) {
             this.salesContainer.innerHTML = `
                 <tr>
                     <td colspan="8" class="py-4 text-center text-gray-500">
@@ -200,19 +418,19 @@ export class SaleView extends BaseView {
             <tr class="hover:bg-gray-50">
                 <td class="border px-4 py-2">${this.formatDate(sale.saleDate)}</td>
                 <td class="border px-4 py-2">${sale.customerName || 'N/A'}</td>
-                <td class="border px-4 py-2">${sale.productName || 'N/A'}</td>
-                <td class="border px-4 py-2">${sale.quantity}</td>
-                <td class="border px-4 py-2">${this.formatCurrency(sale.unitValue || sale.totalValue / sale.quantity)}</td>
-                <td class="border px-4 py-2">${this.formatCurrency(sale.totalValue)}</td>
-                <td class="border px-4 py-2">
+                <td class="border px-4 py-2 max-w-xs truncate" title="${sale.productName || 'N/A'}">${sale.productName || 'N/A'}</td>
+                <td class="border px-4 py-2 text-center">${sale.quantity}</td>
+                <td class="border px-4 py-2 text-right">${this.formatCurrency(sale.unitValue || sale.totalValue / sale.quantity)}</td>
+                <td class="border px-4 py-2 text-right font-semibold">${this.formatCurrency(sale.totalValue)}</td>
+                <td class="border px-4 py-2 text-center">
                     <span class="px-2 py-1 rounded text-xs ${this.getPaymentStatusClass(sale.paymentStatus || 'pendente')}">
                         ${this.getPaymentStatusText(sale.paymentStatus || 'pendente')}
                     </span>
                 </td>
-                <td class="border px-4 py-2">
+                <td class="border px-4 py-2 text-center">
                     <button onclick="viewSaleDetails('${sale.id}')" 
                             class="bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600">
-                        Ver Detalhes
+                        Detalhes
                     </button>
                 </td>
             </tr>
@@ -237,6 +455,33 @@ export class SaleView extends BaseView {
             'vencido': 'Vencido'
         };
         return statuses[status] || status;
+    }
+
+    updateProductSelect(products) {
+        // Para o select de produtos na nova interface de venda
+        const productSelect = document.getElementById('produto-select');
+        if (productSelect) {
+            productSelect.innerHTML = `
+                <option value="">Selecione um produto</option>
+                ${products.map(product => `
+                    <option value="${product.id}" data-price="${product.price}">
+                        ${product.name} (Estoque: ${product.quantity})
+                    </option>
+                `).join('')}
+            `;
+        }
+
+        // Para o select de produtos na interface antiga (compatibilidade)
+        if (this.productSelect && this.productSelect !== productSelect) {
+            this.productSelect.innerHTML = `
+                <option value="">Selecione um produto</option>
+                ${products.map(product => `
+                    <option value="${product.id}" data-price="${product.price}">
+                        ${product.name} (Estoque: ${product.quantity})
+                    </option>
+                `).join('')}
+            `;
+        }
     }
 }
 

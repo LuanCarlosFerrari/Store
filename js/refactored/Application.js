@@ -182,17 +182,53 @@ export class Application {
             });
         }
 
-        // Formulário de vendas
-        const saleForm = document.querySelector('#vendas form');
-        if (saleForm) {
-            saleForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                await this.handleSaleSubmit(new FormData(saleForm));
+        // Nova interface de vendas com múltiplos produtos
+        this.setupNewSaleInterface();
+
+        // Configurar cálculo automático do valor total na venda (legacy)
+        this.setupSaleCalculation();
+    }
+
+    setupNewSaleInterface() {
+        const finalizeSaleBtn = document.getElementById('finalizar-venda');
+        if (finalizeSaleBtn) {
+            finalizeSaleBtn.addEventListener('click', async () => {
+                await this.handleMultiProductSale();
             });
         }
+    } async handleMultiProductSale() {
+        try {
+            const saleView = this.saleController.view;
+            const saleData = saleView.getSaleData();
 
-        // Configurar cálculo automático do valor total na venda
-        this.setupSaleCalculation();
+            // Processar cada produto como uma venda separada (compatibilidade com sistema atual)
+            const results = [];
+            for (const product of saleData.products) {
+                const individualSaleData = {
+                    customerId: saleData.customerId,
+                    productId: product.productId,
+                    quantity: product.quantity,
+                    unitPrice: product.unitPrice,
+                    totalValue: product.subtotal,
+                    paymentMethod: saleData.paymentMethod
+                };
+
+                const sale = await this.saleController.createSale(individualSaleData);
+                results.push(sale);
+            }
+
+            // Limpar formulário e atualizar interface
+            saleView.clearSaleForm();
+            saleView.showSuccess(`Venda finalizada com sucesso! ${results.length} produto(s) vendido(s).`);
+
+            // Recarregar vendas e atualizar dashboard
+            await this.saleController.loadSales();
+            await this.refreshDashboard();
+
+        } catch (error) {
+            console.error('Erro ao finalizar venda:', error);
+            this.saleController.view?.showError(error.message);
+        }
     }
 
     setupSaleCalculation() {
@@ -266,9 +302,7 @@ export class Application {
 
         // Carregar dados da aba
         await this.loadTabData(tabId);
-    }
-
-    async loadTabData(tabId) {
+    } async loadTabData(tabId) {
         try {
             switch (tabId) {
                 case 'dashboard':
@@ -281,7 +315,7 @@ export class Application {
                     await this.customerController.loadCustomers();
                     break;
                 case 'vendas':
-                    await this.saleController.loadSales();
+                    await this.loadSalesTabData();
                     break;
                 case 'pagamentos':
                     await this.paymentController.loadPayments();
@@ -290,6 +324,20 @@ export class Application {
         } catch (error) {
             console.error(`Erro ao carregar dados da aba ${tabId}:`, error);
         }
+    }
+
+    async loadSalesTabData() {
+        // Carregar vendas
+        await this.saleController.loadSales();
+
+        // Carregar e atualizar selects de produtos e clientes para a interface de venda
+        const [products, customers] = await Promise.all([
+            this.productController.getProductsInStock(),
+            this.customerController.loadCustomers()
+        ]);
+
+        // Atualizar selects na view de vendas
+        this.saleController.view.updateProductSelect(products);
     }
 
     async loadInitialData() {
