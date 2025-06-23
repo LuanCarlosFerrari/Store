@@ -186,9 +186,7 @@ export class SaleView extends BaseView {
         // Elementos da nova interface de venda
         this.saleProducts = [];
         this.setupNewSaleInterface();
-    }
-
-    setupNewSaleInterface() {
+    } setupNewSaleInterface() {
         // Cache de elementos do formulário de venda
         this.productSelect = document.getElementById('produto-select');
         this.quantityInput = document.getElementById('quantidade-input');
@@ -198,6 +196,14 @@ export class SaleView extends BaseView {
         this.totalElement = document.getElementById('total-venda');
         this.finalizeSaleBtn = document.getElementById('finalizar-venda');
         this.noProductsRow = document.getElementById('no-produtos-row');
+
+        // Elementos de prazo
+        this.paymentTypeSelect = document.getElementById('payment-type');
+        this.prazoOptions = document.getElementById('prazo-options');
+        this.prazoDiasSelect = document.getElementById('prazo-dias');
+        this.customDateContainer = document.getElementById('custom-date-container');
+        this.customDueDateInput = document.getElementById('custom-due-date');
+        this.valorInicialInput = document.getElementById('valor-inicial');
 
         // Event listeners
         this.setupEventListeners();
@@ -232,7 +238,45 @@ export class SaleView extends BaseView {
                 }
             });
         }
-    } addProductToSale() {
+
+        // Controles de pagamento a prazo
+        this.setupPaymentTermsListeners();
+    } setupPaymentTermsListeners() {
+        // Configurar data mínima como hoje
+        if (this.customDueDateInput) {
+            const today = new Date().toISOString().split('T')[0];
+            this.customDueDateInput.min = today;
+        }
+
+        // Mostrar/ocultar opções de prazo
+        if (this.paymentTypeSelect) {
+            this.paymentTypeSelect.addEventListener('change', () => {
+                const isPrazo = this.paymentTypeSelect.value === 'prazo';
+                if (this.prazoOptions) {
+                    this.prazoOptions.classList.toggle('hidden', !isPrazo);
+                }
+                this.updateValorInicialPlaceholder();
+            });
+        }
+
+        // Mostrar/ocultar campo de data personalizada
+        if (this.prazoDiasSelect) {
+            this.prazoDiasSelect.addEventListener('change', () => {
+                const isCustom = this.prazoDiasSelect.value === 'custom';
+                if (this.customDateContainer) {
+                    this.customDateContainer.classList.toggle('hidden', !isCustom);
+                }
+                this.updateDueDateFromDays();
+            });
+        }        // Validar valor inicial
+        if (this.valorInicialInput) {
+            this.valorInicialInput.addEventListener('input', () => {
+                this.validateValorInicial();
+            });
+        }
+    }
+
+    addProductToSale() {
         const productId = this.productSelect?.value;
         const productOption = this.productSelect?.selectedOptions[0];
         const productName = productOption?.text;
@@ -339,9 +383,7 @@ export class SaleView extends BaseView {
             const removeBtn = row.querySelector('.remove-product-btn');
             removeBtn.addEventListener('click', () => {
                 this.removeProductFromSale(index);
-            });
-
-            this.productsTable.appendChild(row);
+            }); this.productsTable.appendChild(row);
         });
     }
 
@@ -350,6 +392,10 @@ export class SaleView extends BaseView {
         if (this.totalElement) {
             this.totalElement.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
         }
+
+        // Atualizar placeholder do valor inicial
+        this.updateValorInicialPlaceholder();
+
         return total;
     }
 
@@ -380,6 +426,15 @@ export class SaleView extends BaseView {
         // Resetar método de pagamento
         const paymentMethodSelect = document.getElementById('payment-method');
         if (paymentMethodSelect) paymentMethodSelect.value = 'pix';
+
+        // Resetar opções de prazo
+        if (this.paymentTypeSelect) this.paymentTypeSelect.value = 'vista';
+        if (this.prazoDiasSelect) this.prazoDiasSelect.value = '30';
+        if (this.valorInicialInput) this.valorInicialInput.value = ''; if (this.customDueDateInput) this.customDueDateInput.value = '';
+
+        // Ocultar opções de prazo
+        if (this.prazoOptions) this.prazoOptions.classList.add('hidden');
+        if (this.customDateContainer) this.customDateContainer.classList.add('hidden');
     }
 
     getSaleData() {
@@ -394,13 +449,19 @@ export class SaleView extends BaseView {
             throw new Error('Adicione pelo menos um produto à venda');
         }
 
+        // Obter dados de prazo
+        const paymentTerms = this.getPaymentTermsData();
+
         return {
             customerId: customerSelect.value,
             products: this.saleProducts,
             paymentMethod: paymentMethodSelect?.value || 'pix',
-            totalValue: this.updateTotal()
+            totalValue: this.updateTotal(),
+            paymentTerms: paymentTerms
         };
-    } displaySales(sales) {
+    }
+
+    displaySales(sales) {
         if (!this.salesContainer) return;
 
         if (sales.length === 0) {

@@ -185,21 +185,56 @@ export class SaleController {
                 try {
                     const { Payment } = await import('../../core/domain/entities/Payment.js');
 
-                    const paymentData = {
-                        saleId: sale.id,
-                        totalValue: sale.totalValue,
-                        paidValue: sale.totalValue, // Assumir que é pago à vista
-                        paymentMethod: saleData.paymentMethod || Payment.PAYMENT_METHODS.PIX,
-                        dueDate: new Date(), // Vencimento hoje para pagamento à vista
-                        paymentDate: new Date(), // Pago hoje
-                        status: Payment.PAYMENT_STATUS.PAID,
-                        userId: user?.id
-                    };
+                    // Verificar se é venda a prazo
+                    const paymentTerms = saleData.paymentTerms || { type: 'vista', dueDate: new Date(), initialValue: 0 };
+                    const isVista = paymentTerms.type === 'vista';
+                    const initialValue = paymentTerms.initialValue || 0;
+                    const hasInitialPayment = initialValue > 0;
 
-                    const payment = new Payment(paymentData);
-                    await this.paymentRepository.create(payment);
+                    // Pagamento à vista ou valor inicial de venda a prazo
+                    if (isVista || hasInitialPayment) {
+                        const initialPaymentValue = isVista ? sale.totalValue : initialValue;
 
-                    console.log('Pagamento criado automaticamente para venda:', sale.id);
+                        const initialPaymentData = {
+                            saleId: sale.id,
+                            totalValue: sale.totalValue,
+                            paidValue: initialPaymentValue,
+                            paymentMethod: saleData.paymentMethod || Payment.PAYMENT_METHODS.PIX,
+                            dueDate: new Date(),
+                            paymentDate: new Date(),
+                            status: isVista ? Payment.PAYMENT_STATUS.PAID : Payment.PAYMENT_STATUS.PARTIAL,
+                            userId: user?.id
+                        };
+
+                        const initialPayment = new Payment(initialPaymentData);
+                        await this.paymentRepository.create(initialPayment);
+
+                        console.log(`Pagamento inicial criado: R$ ${initialPaymentValue.toFixed(2)}`);
+                    }
+
+                    // Criar pagamento a prazo se necessário
+                    if (!isVista) {
+                        const remainingValue = sale.totalValue - initialValue;
+
+                        if (remainingValue > 0) {
+                            const prazoPaymentData = {
+                                saleId: sale.id,
+                                totalValue: remainingValue,
+                                paidValue: 0,
+                                paymentMethod: saleData.paymentMethod || Payment.PAYMENT_METHODS.PIX,
+                                dueDate: paymentTerms.dueDate,
+                                paymentDate: null,
+                                status: Payment.PAYMENT_STATUS.PENDING,
+                                userId: user?.id
+                            };
+
+                            const prazoPayment = new Payment(prazoPaymentData);
+                            await this.paymentRepository.create(prazoPayment);
+
+                            console.log(`Pagamento a prazo criado: R$ ${remainingValue.toFixed(2)}, vencimento: ${paymentTerms.dueDate.toLocaleDateString('pt-BR')}`);
+                        }
+                    }
+
                 } catch (paymentError) {
                     console.error('Erro ao criar pagamento automático:', paymentError);
                     // Não falhar a venda se o pagamento não puder ser criado

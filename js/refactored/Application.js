@@ -210,16 +210,29 @@ export class Application {
                     quantity: product.quantity,
                     unitPrice: product.unitPrice,
                     totalValue: product.subtotal,
-                    paymentMethod: saleData.paymentMethod
+                    paymentMethod: saleData.paymentMethod,
+                    paymentTerms: saleData.paymentTerms
                 };
 
                 const sale = await this.saleController.createSale(individualSaleData);
                 results.push(sale);
             }
 
+            // Mostrar mensagem de sucesso com detalhes do prazo
+            let successMessage = `Venda finalizada com sucesso! ${results.length} produto(s) vendido(s).`;
+
+            if (saleData.paymentTerms.type === 'prazo') {
+                const dueDate = saleData.paymentTerms.dueDate.toLocaleDateString('pt-BR');
+                if (saleData.paymentTerms.initialValue > 0) {
+                    successMessage += ` Valor inicial: R$ ${saleData.paymentTerms.initialValue.toFixed(2).replace('.', ',')}. Vencimento: ${dueDate}.`;
+                } else {
+                    successMessage += ` Vencimento: ${dueDate}.`;
+                }
+            }
+
             // Limpar formulário e atualizar interface
             saleView.clearSaleForm();
-            saleView.showSuccess(`Venda finalizada com sucesso! ${results.length} produto(s) vendido(s).`);
+            saleView.showSuccess(successMessage);
 
             // Recarregar vendas e atualizar dashboard
             await this.saleController.loadSales();
