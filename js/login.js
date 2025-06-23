@@ -2,12 +2,7 @@
  * Login Module - Gerencia autenticação usando o AuthService refatorado
  */
 import { AuthService } from './refactored/infrastructure/services/AuthService.js';
-
-// Configuração do Supabase
-const SUPABASE_CONFIG = {
-    url: 'https://tthnfrhnqlbvkobmhtqu.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0aG5mcmhucWxidmtvYm1odHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0NDQ5NzMsImV4cCI6MjA2NjAyMDk3M30.KYmxo-BNljioDJEbCuMn38BiAXRv0mZflU0WvjCOdF8'
-};
+import { SUPABASE_CONFIG } from './refactored/config/config.js';
 
 class LoginManager {
     constructor() {

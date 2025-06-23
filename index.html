@@ -403,25 +403,6 @@
         </main>
     </div> <!-- Scripts -->
     <script type="module" src="js/refactored/main.js"></script>
-
-    <!-- Script para compatibilidade com formulários (temporary) -->
-    <script>
-        // Atualizar valor total na venda
-        document.addEventListener('change', function (e) {
-            if (e.target.name === 'produto' || e.target.name === 'quantidade') {
-                const produtoSelect = document.querySelector('select[name="produto"]');
-                const quantidadeInput = document.querySelector('input[name="quantidade"]');
-                const valorTotalInput = document.querySelector('input[name="valor_total"]');
-
-                if (produtoSelect.value && quantidadeInput.value) {
-                    const preco = parseFloat(produtoSelect.selectedOptions[0]?.dataset.price || 0);
-                    const quantidade = parseInt(quantidadeInput.value);
-                    const total = preco * quantidade;
-                    valorTotalInput.value = total.toFixed(2);
-                }
-            }
-        });
-    </script>
 </body>
 
 </html>

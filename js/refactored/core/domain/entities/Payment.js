@@ -56,9 +56,7 @@ export class Payment {
         if (!(dueDate instanceof Date)) {
             throw new Error('Data de vencimento deve ser uma data válida');
         }
-    }
-
-    getStatus() {
+    } getStatus() {
         if (this.paidValue === 0) {
             return this.isOverdue() ? Payment.PAYMENT_STATUS.OVERDUE : Payment.PAYMENT_STATUS.PENDING;
         }
@@ -75,7 +73,8 @@ export class Payment {
     }
 
     isOverdue() {
-        return new Date() > this.dueDate && this.getStatus() !== Payment.PAYMENT_STATUS.PAID;
+        // Verificar se está vencido sem chamar getStatus() para evitar recursão
+        return new Date() > this.dueDate && this.paidValue < this.totalValue;
     }
 
     makePayment(amount) {
@@ -107,18 +106,29 @@ export class Payment {
             status: this.getStatus(),
             userId: this.userId
         };
-    }
+    } static fromJSON(data) {
+        console.log('Payment.fromJSON - dados recebidos:', data);
 
-    static fromJSON(data) {
-        return new Payment({
+        const payment = new Payment({
             id: data.id,
             saleId: data.saleId || data.venda_id,
-            totalValue: data.totalValue || data.valor_total,
-            paidValue: data.paidValue || data.valor_pago || 0,
+            totalValue: parseFloat(data.totalValue || data.valor_total),
+            paidValue: parseFloat(data.paidValue || data.valor_pago || 0),
             paymentMethod: data.paymentMethod || data.metodo_pagamento,
             dueDate: new Date(data.dueDate || data.data_vencimento),
             paymentDate: data.paymentDate ? new Date(data.paymentDate) : (data.data_pagamento ? new Date(data.data_pagamento) : null),
             userId: data.userId || data.user_id
         });
+
+        console.log('Payment.fromJSON - pagamento criado:', {
+            id: payment.id,
+            totalValue: payment.totalValue,
+            paidValue: payment.paidValue,
+            status: payment.getStatus(),
+            dueDate: payment.dueDate,
+            remainingValue: payment.getRemainingValue()
+        });
+
+        return payment;
     }
 }

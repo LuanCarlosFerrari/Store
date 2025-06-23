@@ -105,10 +105,11 @@ export class DashboardService {
                 return 0;
             }
         }
-    }
-
-    async getTotalPending(userId = null) {
-        return await this.paymentUseCases.getTotalPending(userId);
+    } async getTotalPending(userId = null) {
+        console.log('DashboardService: Calculando total pendente...');
+        const totalPending = await this.paymentUseCases.getTotalPending(userId);
+        console.log('DashboardService: Total pendente calculado:', totalPending);
+        return totalPending;
     }
 
     async getTotalOverdue(userId = null) {

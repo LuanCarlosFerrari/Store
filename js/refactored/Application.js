@@ -163,9 +163,7 @@ export class Application {
                 this.showTab(tabId);
             });
         });
-    }
-
-    setupForms() {
+    } setupForms() {
         // Formulário de produtos
         const productForm = document.querySelector('#produtos form');
         if (productForm) {
@@ -192,6 +190,27 @@ export class Application {
                 await this.handleSaleSubmit(new FormData(saleForm));
             });
         }
+
+        // Configurar cálculo automático do valor total na venda
+        this.setupSaleCalculation();
+    }
+
+    setupSaleCalculation() {
+        // Listener para calcular valor total automaticamente
+        document.addEventListener('change', (e) => {
+            if (e.target.name === 'produto' || e.target.name === 'quantidade') {
+                const produtoSelect = document.querySelector('select[name="produto"]');
+                const quantidadeInput = document.querySelector('input[name="quantidade"]');
+                const valorTotalInput = document.querySelector('input[name="valor_total"]');
+
+                if (produtoSelect?.value && quantidadeInput?.value && valorTotalInput) {
+                    const preco = parseFloat(produtoSelect.selectedOptions[0]?.dataset.price || 0);
+                    const quantidade = parseInt(quantidadeInput.value);
+                    const total = preco * quantidade;
+                    valorTotalInput.value = total.toFixed(2);
+                }
+            }
+        });
     }
 
     setupDateSelector() {

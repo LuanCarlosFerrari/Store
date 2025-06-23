@@ -178,10 +178,16 @@ export class PaymentUseCases {
 
         const payment = new Payment(paymentData);
         return await this.paymentRepository.create(payment);
-    }
+    } async getAllPayments(userId = null) {
+        console.log('PaymentUseCases: Buscando todos os pagamentos para userId:', userId);
+        const payments = await this.paymentRepository.findAll(userId);
+        console.log(`PaymentUseCases: ${payments.length} pagamentos encontrados no total`);
 
-    async getAllPayments(userId = null) {
-        return await this.paymentRepository.findAll(userId);
+        payments.forEach(payment => {
+            console.log(`- ID: ${payment.id}, Status: ${payment.getStatus()}, Total: ${payment.totalValue}, Pago: ${payment.paidValue}, Restante: ${payment.getRemainingValue()}, Vencimento: ${payment.dueDate}`);
+        });
+
+        return payments;
     }
 
     async getPaymentById(id) {
@@ -248,13 +254,24 @@ export class PaymentUseCases {
             console.error('Erro ao buscar pagamentos por data:', error);
             throw error;
         }
-    }
-
-    async getTotalPending(userId = null) {
+    } async getTotalPending(userId = null) {
+        console.log('PaymentUseCases: Calculando total pendente...');
         const payments = await this.getAllPayments(userId);
-        return payments
-            .filter(payment => payment.getStatus() !== Payment.PAYMENT_STATUS.PAID)
-            .reduce((total, payment) => total + payment.getRemainingValue(), 0);
+        console.log(`PaymentUseCases: Total de ${payments.length} pagamentos encontrados`);
+
+        const unpaidPayments = payments.filter(payment => {
+            const status = payment.getStatus();
+            const isUnpaid = status !== Payment.PAYMENT_STATUS.PAID;
+
+            console.log(`- Pagamento ID: ${payment.id}, Status: ${status}, Valor restante: ${payment.getRemainingValue()}, Vencimento: ${payment.dueDate}, Incluído: ${isUnpaid}`);
+
+            return isUnpaid;
+        });
+
+        const totalPending = unpaidPayments.reduce((total, payment) => total + payment.getRemainingValue(), 0);
+        console.log(`PaymentUseCases: Total pendente calculado: R$ ${totalPending}`);
+
+        return totalPending;
     }
 
     async getTotalOverdue(userId = null) {

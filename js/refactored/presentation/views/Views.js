@@ -69,9 +69,7 @@ export class ProductView extends BaseView {
     }
 
     displayProducts(products) {
-        if (!this.productsContainer) return;
-
-        if (products.length === 0) {
+        if (!this.productsContainer) return; if (products.length === 0) {
             this.productsContainer.innerHTML = `
                 <tr>
                     <td colspan="5" class="py-4 text-center text-gray-500">
@@ -80,7 +78,9 @@ export class ProductView extends BaseView {
                 </tr>
             `;
             return;
-        } this.productsContainer.innerHTML = products.map(product => `
+        }
+
+        this.productsContainer.innerHTML = products.map(product => `
             <tr class="hover:bg-gray-50">
                 <td class="border px-4 py-2">${product.name}</td>
                 <td class="border px-4 py-2">${product.quantity}</td>

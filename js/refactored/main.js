@@ -2,27 +2,22 @@
  * Configuration and Initialization
  */
 import { Application } from './Application.js';
-
-// Configuração do Supabase
-const SUPABASE_CONFIG = {
-    url: 'https://tthnfrhnqlbvkobmhtqu.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0aG5mcmhucWxidmtvYm1odHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0NDQ5NzMsImV4cCI6MjA2NjAyMDk3M30.KYmxo-BNljioDJEbCuMn38BiAXRv0mZflU0WvjCOdF8'
-};
+import { SUPABASE_CONFIG, Logger } from './config/config.js';
 
 // Função global para inicializar a aplicação
 window.initializeApp = async (supabaseClient) => {
     try {
-        console.log('Criando instância da aplicação...');
+        Logger.log('Criando instância da aplicação...');
         const app = new Application(supabaseClient);
-        console.log('Instância criada, inicializando...');
+        Logger.log('Instância criada, inicializando...');
         await app.initialize();
-        console.log('Aplicação inicializada com sucesso!');
+        Logger.log('Aplicação inicializada com sucesso!');
 
         // Armazenar globalmente para compatibilidade
         window.app = app;
         return app;
     } catch (error) {
-        console.error('Erro ao inicializar aplicação:', error);
+        Logger.error('Erro ao inicializar aplicação:', error);
         throw error;
     }
 };
@@ -30,7 +25,7 @@ window.initializeApp = async (supabaseClient) => {
 // Inicialização quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        console.log('Inicializando Supabase...');
+        Logger.log('Inicializando Supabase...');
 
         // Verificar se Supabase está disponível
         if (typeof window.supabase === 'undefined') {
@@ -43,15 +38,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             SUPABASE_CONFIG.anonKey
         );
 
-        console.log('Supabase inicializado, iniciando aplicação...');
+        Logger.log('Supabase inicializado, iniciando aplicação...');
 
         // Inicializar aplicação
         await window.initializeApp(supabaseClient);
 
-        console.log('Aplicação inicializada com sucesso!');
+        Logger.log('Aplicação inicializada com sucesso!');
 
     } catch (error) {
-        console.error('Erro na inicialização:', error);
+        Logger.error('Erro na inicialização:', error);
 
         // Mostrar erro para o usuário
         const errorContainer = document.createElement('div');
@@ -141,7 +136,6 @@ window.resetarFiltroData = async () => {
 // Funções para produtos
 window.editProduct = async (productId) => {
     console.log('Editar produto:', productId);
-    // TODO: Implementar modal de edição
     alert('Funcionalidade de edição será implementada em breve');
 };
 
@@ -159,7 +153,6 @@ window.deleteProduct = async (productId) => {
 // Funções para clientes
 window.editCustomer = async (customerId) => {
     console.log('Editar cliente:', customerId);
-    // TODO: Implementar modal de edição
     alert('Funcionalidade de edição será implementada em breve');
 };
 
@@ -177,7 +170,6 @@ window.deleteCustomer = async (customerId) => {
 // Funções para vendas
 window.viewSaleDetails = async (saleId) => {
     console.log('Ver detalhes da venda:', saleId);
-    // TODO: Implementar modal de detalhes
     alert('Detalhes da venda serão implementados em breve');
 };
 
