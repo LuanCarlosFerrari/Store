@@ -185,12 +185,10 @@ export class SaleView extends BaseView {
     }
 
     displaySales(sales) {
-        if (!this.salesContainer) return;
-
-        if (sales.length === 0) {
+        if (!this.salesContainer) return; if (sales.length === 0) {
             this.salesContainer.innerHTML = `
                 <tr>
-                    <td colspan="6" class="py-4 text-center text-gray-500">
+                    <td colspan="8" class="py-4 text-center text-gray-500">
                         Nenhuma venda registrada
                     </td>
                 </tr>
@@ -204,7 +202,13 @@ export class SaleView extends BaseView {
                 <td class="border px-4 py-2">${sale.customerName || 'N/A'}</td>
                 <td class="border px-4 py-2">${sale.productName || 'N/A'}</td>
                 <td class="border px-4 py-2">${sale.quantity}</td>
+                <td class="border px-4 py-2">${this.formatCurrency(sale.unitValue || sale.totalValue / sale.quantity)}</td>
                 <td class="border px-4 py-2">${this.formatCurrency(sale.totalValue)}</td>
+                <td class="border px-4 py-2">
+                    <span class="px-2 py-1 rounded text-xs ${this.getPaymentStatusClass(sale.paymentStatus || 'pendente')}">
+                        ${this.getPaymentStatusText(sale.paymentStatus || 'pendente')}
+                    </span>
+                </td>
                 <td class="border px-4 py-2">
                     <button onclick="viewSaleDetails('${sale.id}')" 
                             class="bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600">
@@ -213,6 +217,26 @@ export class SaleView extends BaseView {
                 </td>
             </tr>
         `).join('');
+    }
+
+    getPaymentStatusClass(status) {
+        const colors = {
+            'pago': 'bg-green-100 text-green-800',
+            'pendente': 'bg-yellow-100 text-yellow-800',
+            'parcial': 'bg-blue-100 text-blue-800',
+            'vencido': 'bg-red-100 text-red-800'
+        };
+        return colors[status] || 'bg-gray-100 text-gray-800';
+    }
+
+    getPaymentStatusText(status) {
+        const statuses = {
+            'pago': 'Pago',
+            'pendente': 'Pendente',
+            'parcial': 'Parcial',
+            'vencido': 'Vencido'
+        };
+        return statuses[status] || status;
     }
 }
 
@@ -236,27 +260,41 @@ export class PaymentView extends BaseView {
                 </tr>
             `;
             return;
+        } if (payments.length === 0) {
+            this.paymentsContainer.innerHTML = `
+                <tr>
+                    <td colspan="10" class="py-4 text-center text-gray-500">
+                        Nenhum pagamento registrado
+                    </td>
+                </tr>
+            `;
+            return;
         }
 
         this.paymentsContainer.innerHTML = payments.map(payment => `
             <tr class="hover:bg-gray-50">
-                <td class="border px-4 py-2">${this.formatDate(payment.dueDate)}</td>
-                <td class="border px-4 py-2">${this.formatCurrency(payment.totalValue)}</td>
-                <td class="border px-4 py-2">${this.formatCurrency(payment.paidValue)}</td>
-                <td class="border px-4 py-2">${this.formatCurrency(payment.getRemainingValue())}</td>
-                <td class="border px-4 py-2">${this.getPaymentMethodText(payment.paymentMethod)}</td>
-                <td class="border px-4 py-2">
-                    <span class="px-2 py-1 rounded text-sm ${this.getStatusColorClass(payment.getStatus())}">
+                <td class="border px-2 py-1 text-sm">#${payment.saleId || 'N/A'}</td>
+                <td class="border px-2 py-1 text-sm">${payment.customerName || 'N/A'}</td>
+                <td class="border px-2 py-1 text-sm">${payment.productName || 'N/A'}</td>
+                <td class="border px-2 py-1 text-sm">${this.formatDate(payment.dueDate)}</td>
+                <td class="border px-2 py-1 text-sm">${this.formatCurrency(payment.totalValue)}</td>
+                <td class="border px-2 py-1 text-sm">${this.formatCurrency(payment.paidValue)}</td>
+                <td class="border px-2 py-1 text-sm">${this.formatCurrency(payment.getRemainingValue())}</td>
+                <td class="border px-2 py-1 text-sm">${this.getPaymentMethodText(payment.paymentMethod)}</td>
+                <td class="border px-2 py-1">
+                    <span class="px-2 py-1 rounded text-xs ${this.getStatusColorClass(payment.getStatus())}">
                         ${this.getStatusText(payment.getStatus())}
                     </span>
                 </td>
-                <td class="border px-4 py-2">
+                <td class="border px-2 py-1">
                     ${payment.getStatus() !== 'pago' ? `
                         <button onclick="makePayment('${payment.id}')" 
-                                class="bg-green-500 text-white px-2 py-1 rounded text-sm hover:bg-green-600">
+                                class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600">
                             Pagar
                         </button>
-                    ` : ''}
+                    ` : `
+                        <span class="text-green-600 text-xs">✓ Pago</span>
+                    `}
                 </td>
             </tr>
         `).join('');

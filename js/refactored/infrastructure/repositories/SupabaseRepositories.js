@@ -206,15 +206,14 @@ export class SupabaseSaleRepository extends ISaleRepository {
         }
 
         return data ? Sale.fromJSON(data) : null;
-    }
-
-    async findAll(userId = null) {
+    } async findAll(userId = null) {
         let query = this.supabase
             .from(this.tableName)
             .select(`
                 *,
                 clientes:cliente_id(nome),
-                produtos:produto_id(nome)
+                produtos:produto_id(nome),
+                pagamentos(status)
             `);
 
         if (userId) {
@@ -224,7 +223,25 @@ export class SupabaseSaleRepository extends ISaleRepository {
         const { data, error } = await query.order('data_venda', { ascending: false });
 
         if (error) throw new Error(`Erro ao listar vendas: ${error.message}`);
-        return data.map(item => Sale.fromJSON(item));
+        return data.map(item => {
+            const sale = Sale.fromJSON(item);
+            // Adicionar informações dos relacionamentos
+            if (item.clientes) {
+                sale.customerName = item.clientes.nome;
+            }
+            if (item.produtos) {
+                sale.productName = item.produtos.nome;
+            }
+            // Determinar status do pagamento
+            if (item.pagamentos && item.pagamentos.length > 0) {
+                sale.paymentStatus = item.pagamentos[0].status;
+            } else {
+                sale.paymentStatus = 'pendente';
+            }
+            // Adicionar valor unitário
+            sale.unitValue = item.valor_unitario || (sale.totalValue / sale.quantity);
+            return sale;
+        });
     }
 
     async findByDateRange(startDate, endDate, userId = null) {
@@ -326,14 +343,17 @@ export class SupabasePaymentRepository extends IPaymentRepository {
         }
 
         return data ? Payment.fromJSON(data) : null;
-    }
-
-    async findAll(userId = null) {
+    } async findAll(userId = null) {
         let query = this.supabase
             .from(this.tableName)
             .select(`
                 *,
-                vendas:venda_id(data_venda)
+                vendas:venda_id(
+                    id,
+                    data_venda,
+                    clientes:cliente_id(nome),
+                    produtos:produto_id(nome)
+                )
             `);
 
         if (userId) {
@@ -343,7 +363,16 @@ export class SupabasePaymentRepository extends IPaymentRepository {
         const { data, error } = await query.order('data_vencimento', { ascending: true });
 
         if (error) throw new Error(`Erro ao listar pagamentos: ${error.message}`);
-        return data.map(item => Payment.fromJSON(item));
+        return data.map(item => {
+            const payment = Payment.fromJSON(item);
+            // Adicionar informações da venda relacionada
+            if (item.vendas) {
+                payment.saleId = item.vendas.id;
+                payment.customerName = item.vendas.clientes?.nome || 'Cliente não encontrado';
+                payment.productName = item.vendas.produtos?.nome || 'Produto não encontrado';
+            }
+            return payment;
+        });
     }
 
     async findBySaleId(saleId) {
