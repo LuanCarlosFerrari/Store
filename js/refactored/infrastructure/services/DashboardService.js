@@ -71,39 +71,72 @@ export class DashboardService {
         return await this.saleUseCases.getTotalSalesValueByDate(date, userId);
     } async getTotalReceivedForDate(date, userId = null) {
         try {
-            const received = await this.paymentUseCases.getTotalReceivedByDate(date, userId);
-
-            // Método alternativo: verificar se há vendas sem pagamentos correspondentes
-            const salesTotal = await this.getTotalSalesForDate(date, userId);
+            // Buscar apenas pagamentos que foram realmente pagos (status = 'pago') na data especificada
+            const allPayments = await this.paymentUseCases.getAllPayments(userId);
 
             console.log(`Data: ${date.toISOString().split('T')[0]}`);
-            console.log(`Total de pagamentos registrados: R$ ${received}`);
-            console.log(`Total de vendas no dia: R$ ${salesTotal}`);
+            console.log(`Analisando ${allPayments.length} pagamentos para encontrar os pagos na data`);
 
-            // Se não há pagamentos registrados mas há vendas, usar as vendas
-            if (received === 0 && salesTotal > 0) {
-                console.log('Nenhum pagamento registrado, usando vendas do dia como fallback');
-                return salesTotal;
-            }
+            // Log de todos os pagamentos para debug
+            allPayments.forEach(payment => {
+                console.log(`Pagamento ID: ${payment.id}, Status: ${payment.getStatus()}, Valor Pago: ${payment.paidValue}, Data Pagamento: ${payment.paymentDate}, Data Última: ${payment.lastPaymentDate}`);
+            });
 
-            // Se há pagamentos, mas o valor é menor que as vendas, pode haver vendas sem pagamento
-            if (received > 0 && received < salesTotal) {
-                console.log(`Possível discrepância: vendas (${salesTotal}) > pagamentos (${received}). Usando vendas como valor recebido.`);
-                return salesTotal;
-            }
+            const paidPaymentsForDate = allPayments.filter(payment => {
+                // Só considerar pagamentos com status 'pago'
+                const isPaid = payment.getStatus() === 'pago';
 
-            return received;
+                console.log(`Pagamento ${payment.id}: Status = ${payment.getStatus()}, isPaid = ${isPaid}`);
+
+                if (!isPaid) {
+                    console.log(`Pagamento ${payment.id} ignorado - status: ${payment.getStatus()}`);
+                    return false;
+                }
+
+                // Verificar se a data de pagamento corresponde à data solicitada
+                // MUDANÇA: Vamos também considerar pagamentos pagos criados na mesma data da venda
+                let isDateMatch = false;
+
+                // Opção 1: Data de pagamento específica
+                if (payment.paymentDate) {
+                    const paymentDate = new Date(payment.paymentDate);
+                    isDateMatch = paymentDate.toDateString() === date.toDateString();
+                    console.log(`Pagamento ${payment.id}: Data pagamento ${paymentDate.toDateString()} vs ${date.toDateString()} = ${isDateMatch}`);
+                }
+
+                // Opção 2: Data da última atualização
+                if (!isDateMatch && payment.lastPaymentDate) {
+                    const lastPaymentDate = new Date(payment.lastPaymentDate);
+                    isDateMatch = lastPaymentDate.toDateString() === date.toDateString();
+                    console.log(`Pagamento ${payment.id}: Data última ${lastPaymentDate.toDateString()} vs ${date.toDateString()} = ${isDateMatch}`);
+                }
+
+                // Opção 3: Se não tem data de pagamento mas está pago, considerar pela data de criação
+                if (!isDateMatch && !payment.paymentDate && !payment.lastPaymentDate) {
+                    console.log(`Pagamento ${payment.id}: Sem data de pagamento, mas está pago. Considerando como recebido na data.`);
+                    isDateMatch = true;
+                }
+
+                const shouldInclude = isPaid && isDateMatch;
+
+                console.log(`Pagamento ${payment.id}: shouldInclude = ${shouldInclude}`);
+
+                if (shouldInclude) {
+                    console.log(`✅ Pagamento pago encontrado: ID ${payment.id}, Valor: R$ ${payment.paidValue}, Data: ${payment.paymentDate || payment.lastPaymentDate || 'sem data específica'}`);
+                }
+
+                return shouldInclude;
+            });
+
+            const totalReceived = paidPaymentsForDate.reduce((total, payment) => total + payment.paidValue, 0);
+
+            console.log(`📊 Total recebido (apenas pagamentos com status 'pago') na data: R$ ${totalReceived}`);
+            console.log(`📊 Número de pagamentos pagos encontrados: ${paidPaymentsForDate.length}`);
+
+            return totalReceived;
         } catch (error) {
             console.error('Erro ao calcular total recebido:', error);
-            // Em caso de erro, tentar usar vendas do dia como fallback
-            try {
-                const salesTotal = await this.getTotalSalesForDate(date, userId);
-                console.log('Usando vendas do dia como fallback devido a erro:', salesTotal);
-                return salesTotal;
-            } catch (fallbackError) {
-                console.error('Erro no fallback também:', fallbackError);
-                return 0;
-            }
+            return 0;
         }
     } async getTotalPending(userId = null) {
         console.log('DashboardService: Calculando total pendente...');

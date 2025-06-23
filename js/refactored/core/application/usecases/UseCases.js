@@ -233,21 +233,33 @@ export class PaymentUseCases {
             const payments = await this.getAllPayments(userId);
             console.log(`Analisando ${payments.length} pagamentos para data ${date.toISOString().split('T')[0]}`);
 
-            const paymentsForDate = payments.filter(payment => {
-                if (!payment.paymentDate) return false;
-                const paymentDate = new Date(payment.paymentDate);
-                const targetDate = date.toDateString();
-                const isMatch = paymentDate.toDateString() === targetDate;
+            const paidPaymentsForDate = payments.filter(payment => {
+                // Só considerar pagamentos com status 'pago'
+                const isPaid = payment.getStatus() === Payment.PAYMENT_STATUS.PAID;
 
-                if (isMatch) {
-                    console.log(`Pagamento encontrado para a data: R$ ${payment.paidValue} - Status: ${payment.status}`);
+                if (!isPaid) {
+                    return false;
                 }
 
-                return isMatch;
+                // Verificar se a data de pagamento corresponde à data solicitada
+                let isDateMatch = false;
+                if (payment.paymentDate) {
+                    const paymentDate = new Date(payment.paymentDate);
+                    isDateMatch = paymentDate.toDateString() === date.toDateString();
+                } else if (payment.lastPaymentDate) {
+                    const lastPaymentDate = new Date(payment.lastPaymentDate);
+                    isDateMatch = lastPaymentDate.toDateString() === date.toDateString();
+                }
+
+                if (isDateMatch) {
+                    console.log(`Pagamento pago encontrado para a data: R$ ${payment.paidValue} - Status: ${payment.getStatus()}`);
+                }
+
+                return isDateMatch;
             });
 
-            const totalReceived = paymentsForDate.reduce((total, payment) => total + payment.paidValue, 0);
-            console.log(`Total recebido na data ${date.toISOString().split('T')[0]}: R$ ${totalReceived}`);
+            const totalReceived = paidPaymentsForDate.reduce((total, payment) => total + payment.paidValue, 0);
+            console.log(`Total recebido (apenas pagamentos pagos) na data ${date.toISOString().split('T')[0]}: R$ ${totalReceived}`);
 
             return totalReceived;
         } catch (error) {
