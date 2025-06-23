@@ -222,17 +222,32 @@ export class PaymentUseCases {
     async getTotalReceived(userId = null) {
         const payments = await this.getAllPayments(userId);
         return payments.reduce((total, payment) => total + payment.paidValue, 0);
-    }
+    } async getTotalReceivedByDate(date, userId = null) {
+        try {
+            const payments = await this.getAllPayments(userId);
+            console.log(`Analisando ${payments.length} pagamentos para data ${date.toISOString().split('T')[0]}`);
 
-    async getTotalReceivedByDate(date, userId = null) {
-        const payments = await this.getAllPayments(userId);
-        return payments
-            .filter(payment => {
+            const paymentsForDate = payments.filter(payment => {
                 if (!payment.paymentDate) return false;
                 const paymentDate = new Date(payment.paymentDate);
-                return paymentDate.toDateString() === date.toDateString();
-            })
-            .reduce((total, payment) => total + payment.paidValue, 0);
+                const targetDate = date.toDateString();
+                const isMatch = paymentDate.toDateString() === targetDate;
+
+                if (isMatch) {
+                    console.log(`Pagamento encontrado para a data: R$ ${payment.paidValue} - Status: ${payment.status}`);
+                }
+
+                return isMatch;
+            });
+
+            const totalReceived = paymentsForDate.reduce((total, payment) => total + payment.paidValue, 0);
+            console.log(`Total recebido na data ${date.toISOString().split('T')[0]}: R$ ${totalReceived}`);
+
+            return totalReceived;
+        } catch (error) {
+            console.error('Erro ao buscar pagamentos por data:', error);
+            throw error;
+        }
     }
 
     async getTotalPending(userId = null) {

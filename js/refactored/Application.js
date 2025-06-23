@@ -127,9 +127,7 @@ export class Application {
         this.productController.setView(this.productView);
 
         this.customerController = new CustomerController(this.customerRepository, this.authService);
-        this.customerController.setView(this.customerView);
-
-        this.saleController = new SaleController(this.saleRepository, this.productRepository, this.customerRepository, this.authService);
+        this.customerController.setView(this.customerView); this.saleController = new SaleController(this.saleRepository, this.productRepository, this.customerRepository, this.authService, this.paymentRepository);
         this.saleController.setView(this.saleView);
 
         this.paymentController = new PaymentController(this.paymentRepository, this.saleRepository, this.authService);
@@ -312,15 +310,14 @@ export class Application {
         if (this.currentTab === 'dashboard') {
             await this.dashboardController.refreshDashboard();
         }
-    }
-
-    async handleSaleSubmit(formData) {
+    } async handleSaleSubmit(formData) {
         const saleData = {
             customerId: formData.get('cliente'),
             productId: formData.get('produto'),
             quantity: parseInt(formData.get('quantidade')),
             totalValue: parseFloat(formData.get('valor_total')),
-            saleDate: new Date()
+            saleDate: new Date(),
+            paymentMethod: 'pix' // Método de pagamento padrão para vendas
         };
 
         await this.saleController.createSale(saleData);

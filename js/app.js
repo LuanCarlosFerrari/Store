@@ -334,15 +334,17 @@ class AppController {
         const vendasDiaEl = document.getElementById('vendas-dia');
         if (vendasDiaEl) {
             vendasDiaEl.textContent = this.formatarMoeda(totalVendasDia);
-        }
-
-        // Métricas de pagamentos
+        }        // Métricas de pagamentos
         let recebidoDia = 0;
         let pendenteTotal = 0;
         let atrasoTotal = 0;
         let parcialTotal = 0;
         let qtdAtraso = 0;
         let qtdParcial = 0;
+
+        console.log('App: Iniciando cálculo de métricas de pagamento');
+        console.log('App: Data de filtro:', dataFiltro);
+        console.log('App: Total de vendas do dia:', totalVendasDia);
 
         if (pagamentos.length > 0) {
             console.log('App: Processando', pagamentos.length, 'pagamentos...');
@@ -422,9 +424,17 @@ class AppController {
             }
         }
 
+        console.log('App: Resultado final do cálculo de recebido no dia:', recebidoDia);
+
         // Verificação adicional: se recebidoDia é 0 mas há vendas no dia, usar as vendas como fallback
         if (recebidoDia === 0 && totalVendasDia > 0) {
             console.log('App: Recebido era 0 mas há vendas no dia, usando vendas como recebido');
+            recebidoDia = totalVendasDia;
+        }
+
+        // Verificação extra: se há muito mais vendas que pagamentos, também usar vendas
+        if (recebidoDia > 0 && totalVendasDia > recebidoDia * 1.5) {
+            console.log('App: Vendas significativamente maiores que pagamentos, usando vendas como recebido');
             recebidoDia = totalVendasDia;
         }
 

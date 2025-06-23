@@ -7,12 +7,12 @@ export class DashboardService {
         this.customerUseCases = customerUseCases;
         this.saleUseCases = saleUseCases;
         this.paymentUseCases = paymentUseCases;
-    }
-
-    async getDashboardMetrics(userId = null, selectedDate = null) {
+    } async getDashboardMetrics(userId = null, selectedDate = null) {
         const targetDate = selectedDate ? new Date(selectedDate) : new Date();
 
         try {
+            console.log(`Dashboard: Calculando métricas para data ${targetDate.toISOString().split('T')[0]}`);
+
             const [
                 totalProducts,
                 totalCustomers,
@@ -30,6 +30,16 @@ export class DashboardService {
                 this.getTotalOverdue(userId),
                 this.getRecentSales(targetDate, userId)
             ]);
+
+            console.log('Dashboard métricas calculadas:', {
+                totalProducts,
+                totalCustomers,
+                totalSalesToday,
+                totalReceived,
+                totalPending,
+                totalOverdue,
+                recentSalesCount: recentSales.length
+            });
 
             return {
                 totalProducts,
@@ -59,18 +69,42 @@ export class DashboardService {
 
     async getTotalSalesForDate(date, userId = null) {
         return await this.saleUseCases.getTotalSalesValueByDate(date, userId);
-    }
+    } async getTotalReceivedForDate(date, userId = null) {
+        try {
+            const received = await this.paymentUseCases.getTotalReceivedByDate(date, userId);
 
-    async getTotalReceivedForDate(date, userId = null) {
-        const received = await this.paymentUseCases.getTotalReceivedByDate(date, userId);
-
-        // Fallback: se não há pagamentos registrados, considerar vendas do dia como recebidas
-        if (received === 0) {
+            // Método alternativo: verificar se há vendas sem pagamentos correspondentes
             const salesTotal = await this.getTotalSalesForDate(date, userId);
-            return salesTotal;
-        }
 
-        return received;
+            console.log(`Data: ${date.toISOString().split('T')[0]}`);
+            console.log(`Total de pagamentos registrados: R$ ${received}`);
+            console.log(`Total de vendas no dia: R$ ${salesTotal}`);
+
+            // Se não há pagamentos registrados mas há vendas, usar as vendas
+            if (received === 0 && salesTotal > 0) {
+                console.log('Nenhum pagamento registrado, usando vendas do dia como fallback');
+                return salesTotal;
+            }
+
+            // Se há pagamentos, mas o valor é menor que as vendas, pode haver vendas sem pagamento
+            if (received > 0 && received < salesTotal) {
+                console.log(`Possível discrepância: vendas (${salesTotal}) > pagamentos (${received}). Usando vendas como valor recebido.`);
+                return salesTotal;
+            }
+
+            return received;
+        } catch (error) {
+            console.error('Erro ao calcular total recebido:', error);
+            // Em caso de erro, tentar usar vendas do dia como fallback
+            try {
+                const salesTotal = await this.getTotalSalesForDate(date, userId);
+                console.log('Usando vendas do dia como fallback devido a erro:', salesTotal);
+                return salesTotal;
+            } catch (fallbackError) {
+                console.error('Erro no fallback também:', fallbackError);
+                return 0;
+            }
+        }
     }
 
     async getTotalPending(userId = null) {

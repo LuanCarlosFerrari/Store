@@ -144,9 +144,10 @@ export class CustomerController {
 }
 
 export class SaleController {
-    constructor(saleRepository, productRepository, customerRepository, authService) {
+    constructor(saleRepository, productRepository, customerRepository, authService, paymentRepository = null) {
         this.saleUseCases = new SaleUseCases(saleRepository, productRepository, customerRepository);
         this.authService = authService;
+        this.paymentRepository = paymentRepository;
         this.view = null;
     }
 
@@ -167,14 +168,39 @@ export class SaleController {
         } finally {
             this.view?.showLoading(false);
         }
-    }
-
-    async createSale(saleData) {
+    } async createSale(saleData) {
         try {
             const user = await this.authService.getCurrentUser();
             saleData.userId = user?.id;
 
             const sale = await this.saleUseCases.createSale(saleData);
+
+            // Criar automaticamente um pagamento para a venda
+            if (this.paymentRepository) {
+                try {
+                    const { Payment } = await import('../../core/domain/entities/Payment.js');
+
+                    const paymentData = {
+                        saleId: sale.id,
+                        totalValue: sale.totalValue,
+                        paidValue: sale.totalValue, // Assumir que é pago à vista
+                        paymentMethod: saleData.paymentMethod || Payment.PAYMENT_METHODS.PIX,
+                        dueDate: new Date(), // Vencimento hoje para pagamento à vista
+                        paymentDate: new Date(), // Pago hoje
+                        status: Payment.PAYMENT_STATUS.PAID,
+                        userId: user?.id
+                    };
+
+                    const payment = new Payment(paymentData);
+                    await this.paymentRepository.create(payment);
+
+                    console.log('Pagamento criado automaticamente para venda:', sale.id);
+                } catch (paymentError) {
+                    console.error('Erro ao criar pagamento automático:', paymentError);
+                    // Não falhar a venda se o pagamento não puder ser criado
+                }
+            }
+
             this.view?.showSuccess('Venda realizada com sucesso!');
             await this.loadSales(); // Recarregar lista
             return sale;
