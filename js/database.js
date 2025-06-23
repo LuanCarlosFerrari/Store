@@ -44,17 +44,29 @@ class DatabaseController {
         this.ensureReady();
 
         try {
-            const user = await this.authController.getCurrentUser();
-            if (!user) throw new Error('Usuário não autenticado');
+            // Verificar se user_id está sendo usado
+            let user = null;
+            try {
+                user = await this.authController.getCurrentUser();
+            } catch (error) {
+                console.warn('Não foi possível obter usuário, criando produto sem user_id');
+            }
+
+            // Preparar dados do produto
+            const produtoData = {
+                nome: produto.nome,
+                quantidade: produto.quantidade,
+                preco: produto.preco
+            };
+
+            // Adicionar user_id apenas se o usuário estiver disponível
+            if (user) {
+                produtoData.user_id = user.id;
+            }
 
             const { data, error } = await this.supabase
                 .from('produtos')
-                .insert([{
-                    nome: produto.nome,
-                    quantidade: produto.quantidade,
-                    preco: produto.preco,
-                    user_id: user.id
-                }])
+                .insert([produtoData])
                 .select()
                 .single();
 
@@ -139,25 +151,35 @@ class DatabaseController {
             console.error('Erro ao obter produto:', error);
             throw error;
         }
-    }
-
-    // OPERAÇÕES DE CLIENTES
+    }    // OPERAÇÕES DE CLIENTES
     async criarCliente(cliente) {
         this.ensureReady();
 
         try {
-            const user = await this.authController.getCurrentUser();
-            if (!user) throw new Error('Usuário não autenticado');
+            // Verificar se user_id está sendo usado
+            let user = null;
+            try {
+                user = await this.authController.getCurrentUser();
+            } catch (error) {
+                console.warn('Não foi possível obter usuário, criando cliente sem user_id');
+            }
+
+            // Preparar dados do cliente
+            const clienteData = {
+                nome: cliente.nome,
+                telefone: cliente.telefone,
+                email: cliente.email || null,
+                endereco: cliente.endereco || null
+            };
+
+            // Adicionar user_id apenas se o usuário estiver disponível
+            if (user) {
+                clienteData.user_id = user.id;
+            }
 
             const { data, error } = await this.supabase
                 .from('clientes')
-                .insert([{
-                    nome: cliente.nome,
-                    telefone: cliente.telefone,
-                    email: cliente.email || null,
-                    endereco: cliente.endereco || null,
-                    user_id: user.id
-                }])
+                .insert([clienteData])
                 .select()
                 .single();
 
@@ -243,15 +265,18 @@ class DatabaseController {
             console.error('Erro ao obter cliente:', error);
             throw error;
         }
-    }
-
-    // OPERAÇÕES DE VENDAS
+    }    // OPERAÇÕES DE VENDAS
     async criarVenda(venda) {
         this.ensureReady();
 
         try {
-            const user = await this.authController.getCurrentUser();
-            if (!user) throw new Error('Usuário não autenticado');
+            // Verificar se user_id está sendo usado
+            let user = null;
+            try {
+                user = await this.authController.getCurrentUser();
+            } catch (error) {
+                console.warn('Não foi possível obter usuário, criando venda sem user_id');
+            }
 
             // Iniciar transação para atualizar estoque
             const { data: produto } = await this.supabase
@@ -264,17 +289,25 @@ class DatabaseController {
                 throw new Error('Estoque insuficiente');
             }
 
+            // Preparar dados da venda
+            const vendaData = {
+                cliente_id: venda.cliente_id,
+                produto_id: venda.produto_id,
+                quantidade: venda.quantidade,
+                valor_unitario: venda.valor_unitario || (venda.valor_total / venda.quantidade),
+                valor_total: venda.valor_total,
+                observacoes: venda.observacoes || null
+            };
+
+            // Adicionar user_id apenas se o usuário estiver disponível
+            if (user) {
+                vendaData.user_id = user.id;
+            }
+
             // Criar venda
-            const { data: vendaData, error: vendaError } = await this.supabase
+            const { data: vendaResult, error: vendaError } = await this.supabase
                 .from('vendas')
-                .insert([{
-                    cliente_id: venda.cliente_id,
-                    produto_id: venda.produto_id,
-                    quantidade: venda.quantidade,
-                    valor_unitario: venda.valor_unitario,
-                    valor_total: venda.valor_total,
-                    user_id: user.id
-                }])
+                .insert([vendaData])
                 .select()
                 .single();
 
@@ -289,15 +322,18 @@ class DatabaseController {
 
             if (estoqueError) throw estoqueError;
 
-            return vendaData;
+            return vendaResult;
         } catch (error) {
             console.error('Erro ao criar venda:', error);
             throw error;
         }
-    }    async listarVendas() {
+    }
+
+    async listarVendas() {
         this.ensureReady();
 
-        try {            const { data, error } = await this.supabase
+        try {
+            const { data, error } = await this.supabase
                 .from('vendas')
                 .select(`
                     *,
@@ -316,18 +352,19 @@ class DatabaseController {
                         observacoes
                     )
                 `)
-                .order('data_venda', { ascending: false });
-
-            if (error) throw error;
+                .order('data_venda', { ascending: false }); if (error) throw error;
             return data || [];
         } catch (error) {
             console.error('Erro ao listar vendas:', error);
             throw error;
         }
-    }    async obterVendasPorPeriodo(dataInicio, dataFim) {
+    }
+
+    async obterVendasPorPeriodo(dataInicio, dataFim) {
         this.ensureReady();
 
-        try {            const { data, error } = await this.supabase
+        try {
+            const { data, error } = await this.supabase
                 .from('vendas')
                 .select(`
                     *,
@@ -363,26 +400,51 @@ class DatabaseController {
         this.ensureReady();
 
         try {
-            const user = await this.authController.getCurrentUser();
-            if (!user) throw new Error('Usuário não autenticado');
+            // Verificar se user_id está sendo usado
+            let user = null;
+            try {
+                user = await this.authController.getCurrentUser();
+            } catch (error) {
+                console.warn('Não foi possível obter usuário, criando pagamento sem user_id');
+            }
+
+            // Preparar dados do pagamento
+            const pagamentoData = {
+                venda_id: pagamento.venda_id,
+                valor_total: pagamento.valor_total,
+                valor_pago: pagamento.valor_pago || 0,
+                metodo_pagamento: pagamento.metodo_pagamento,
+                data_vencimento: pagamento.data_vencimento,
+                numero_parcelas: pagamento.numero_parcelas || 1,
+                status: pagamento.status || 'pendente',
+                observacoes: pagamento.observacoes
+            };
+
+            // Definir data_pagamento baseado no status
+            if (pagamento.status === 'pago' && pagamento.data_pagamento) {
+                pagamentoData.data_pagamento = pagamento.data_pagamento;
+            } else if (pagamento.status === 'pago' && !pagamento.data_pagamento) {
+                // Se está pago mas não tem data_pagamento, usar data atual
+                pagamentoData.data_pagamento = new Date().toISOString().split('T')[0];
+            }
+            // Para status pendente, parcial, vencido, etc., data_pagamento fica null
+
+            // Adicionar user_id apenas se o usuário estiver disponível
+            if (user) {
+                pagamentoData.user_id = user.id;
+            }
+
+            console.log('Database: Criando pagamento com dados:', pagamentoData);
 
             const { data, error } = await this.supabase
                 .from('pagamentos')
-                .insert([{
-                    venda_id: pagamento.venda_id,
-                    valor_total: pagamento.valor_total,
-                    valor_pago: pagamento.valor_pago,
-                    metodo_pagamento: pagamento.metodo_pagamento,
-                    data_vencimento: pagamento.data_vencimento,
-                    numero_parcelas: pagamento.numero_parcelas,
-                    status: pagamento.status,
-                    observacoes: pagamento.observacoes,
-                    user_id: user.id
-                }])
+                .insert([pagamentoData])
                 .select()
                 .single();
 
             if (error) throw error;
+
+            console.log('Database: Pagamento criado:', data);
             return data;
         } catch (error) {
             console.error('Erro ao criar pagamento:', error);
@@ -637,34 +699,34 @@ class DatabaseController {
     // MÉTODOS DE DEBUG E DIAGNÓSTICO
     async verificarTabelasPagamentos() {
         this.ensureReady();
-        
+
         try {
             console.log('Verificando existência das tabelas de pagamentos...');
-            
+
             // Testar se consegue fazer uma query na tabela pagamentos
             const { data: pagamentos, error: errorPagamentos } = await this.supabase
                 .from('pagamentos')
                 .select('count')
                 .limit(1);
-                
+
             console.log('Tabela pagamentos:', errorPagamentos ? 'ERRO - ' + errorPagamentos.message : 'OK');
-            
+
             // Testar se consegue fazer uma query na tabela parcelas
             const { data: parcelas, error: errorParcelas } = await this.supabase
                 .from('parcelas')
                 .select('count')
                 .limit(1);
-                
+
             console.log('Tabela parcelas:', errorParcelas ? 'ERRO - ' + errorParcelas.message : 'OK');
-            
+
             // Testar se consegue fazer uma query na tabela historico_pagamentos
             const { data: historico, error: errorHistorico } = await this.supabase
                 .from('historico_pagamentos')
                 .select('count')
                 .limit(1);
-                
+
             console.log('Tabela historico_pagamentos:', errorHistorico ? 'ERRO - ' + errorHistorico.message : 'OK');
-            
+
             // Testar join entre vendas e pagamentos
             const { data: vendasComPagamentos, error: errorJoin } = await this.supabase
                 .from('vendas')
@@ -674,10 +736,10 @@ class DatabaseController {
                     pagamentos(id, metodo_pagamento, status)
                 `)
                 .limit(5);
-                
+
             console.log('Join vendas-pagamentos:', errorJoin ? 'ERRO - ' + errorJoin.message : 'OK');
             console.log('Amostra de vendas com pagamentos:', vendasComPagamentos);
-            
+
             return {
                 pagamentos: !errorPagamentos,
                 parcelas: !errorParcelas,
@@ -685,7 +747,7 @@ class DatabaseController {
                 join: !errorJoin,
                 amostraVendas: vendasComPagamentos
             };
-            
+
         } catch (error) {
             console.error('Erro ao verificar tabelas:', error);
             return {
@@ -697,3 +759,216 @@ class DatabaseController {
 
 // Exportar para uso global
 window.DatabaseController = DatabaseController;
+
+// Funções globais para compatibilidade (usar controller quando disponível)
+async function criarVenda(venda) {
+    try {
+        // Tentar usar o controller primeiro
+        if (window.app && window.app.databaseController && window.app.databaseController.isReady) {
+            return await window.app.databaseController.criarVenda(venda);
+        }
+
+        // Fallback: implementação direta (sem user_id)
+        console.log('Criando venda (fallback):', venda);
+
+        const vendaLimpa = {
+            cliente_id: venda.cliente_id,
+            produto_id: venda.produto_id,
+            quantidade: venda.quantidade,
+            valor_unitario: venda.valor_unitario || (venda.valor_total / venda.quantidade),
+            valor_total: venda.valor_total,
+            data_venda: venda.data_venda || new Date().toISOString(),
+            observacoes: venda.observacoes || null
+        };
+
+        const { data, error } = await supabase
+            .from('vendas')
+            .insert([vendaLimpa])
+            .select();
+
+        if (error) {
+            console.error('Erro na query de criação de venda:', error);
+            throw error;
+        }
+
+        console.log('Venda criada com sucesso:', data);
+        return data[0];
+    } catch (error) {
+        console.error('Erro ao criar venda:', error);
+        throw error;
+    }
+}
+
+async function criarProduto(produto) {
+    try {
+        // Tentar usar o controller primeiro
+        if (window.app && window.app.databaseController && window.app.databaseController.isReady) {
+            return await window.app.databaseController.criarProduto(produto);
+        }
+
+        // Fallback: implementação direta (sem user_id)
+        console.log('Criando produto (fallback):', produto);
+
+        const produtoLimpo = {
+            nome: produto.nome,
+            quantidade: produto.quantidade,
+            preco: produto.preco
+        };
+
+        const { data, error } = await supabase
+            .from('produtos')
+            .insert([produtoLimpo])
+            .select();
+
+        if (error) {
+            console.error('Erro na query de criação de produto:', error);
+            throw error;
+        }
+
+        console.log('Produto criado com sucesso:', data);
+        return data[0];
+    } catch (error) {
+        console.error('Erro ao criar produto:', error);
+        throw error;
+    }
+}
+
+async function criarCliente(cliente) {
+    try {
+        // Tentar usar o controller primeiro
+        if (window.app && window.app.databaseController && window.app.databaseController.isReady) {
+            return await window.app.databaseController.criarCliente(cliente);
+        }
+
+        // Fallback: implementação direta (sem user_id)
+        console.log('Criando cliente (fallback):', cliente);
+
+        const clienteLimpo = {
+            nome: cliente.nome,
+            telefone: cliente.telefone || null,
+            email: cliente.email || null,
+            endereco: cliente.endereco || null
+        };
+
+        const { data, error } = await supabase
+            .from('clientes')
+            .insert([clienteLimpo])
+            .select();
+
+        if (error) {
+            console.error('Erro na query de criação de cliente:', error);
+            throw error;
+        }
+
+        console.log('Cliente criado com sucesso:', data);
+        return data[0];
+    } catch (error) {
+        console.error('Erro ao criar cliente:', error);
+        throw error;
+    }
+}
+
+async function criarPagamento(pagamento) {
+    try {
+        // Tentar usar o controller primeiro
+        if (window.app && window.app.databaseController && window.app.databaseController.isReady) {
+            return await window.app.databaseController.criarPagamento(pagamento);
+        }
+
+        // Fallback: implementação direta (sem user_id)
+        console.log('Criando pagamento (fallback):', pagamento); const pagamentoLimpo = {
+            venda_id: pagamento.venda_id,
+            metodo_pagamento: pagamento.metodo_pagamento,
+            status: pagamento.status || 'pendente',
+            valor_total: pagamento.valor_total,
+            valor_pago: pagamento.valor_pago || 0,
+            data_vencimento: pagamento.data_vencimento || null,
+            numero_parcelas: pagamento.numero_parcelas || 1,
+            observacoes: pagamento.observacoes || null
+        };
+
+        // Definir data_pagamento apenas se status for pago
+        if (pagamento.status === 'pago' && pagamento.data_pagamento) {
+            pagamentoLimpo.data_pagamento = pagamento.data_pagamento;
+        } else if (pagamento.status === 'pago' && !pagamento.data_pagamento) {
+            // Se está pago mas não tem data_pagamento, usar data atual
+            pagamentoLimpo.data_pagamento = new Date().toISOString().split('T')[0];
+        }
+        // Para outros status, data_pagamento fica null (não definido)
+
+        const { data, error } = await supabase
+            .from('pagamentos')
+            .insert([pagamentoLimpo])
+            .select();
+
+        if (error) {
+            console.error('Erro na query de criação de pagamento:', error);
+            throw error;
+        }
+
+        console.log('Pagamento criado com sucesso:', data);
+        return data[0];
+    } catch (error) {
+        console.error('Erro ao criar pagamento:', error);
+        throw error;
+    }
+}
+
+// Funções de listagem para compatibilidade
+async function listarClientes() {
+    try {
+        if (window.app && window.app.databaseController && window.app.databaseController.isReady) {
+            return await window.app.databaseController.listarClientes();
+        }
+
+        const { data, error } = await supabase
+            .from('clientes')
+            .select('*')
+            .order('nome');
+
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Erro ao listar clientes:', error);
+        throw error;
+    }
+}
+
+async function listarProdutos() {
+    try {
+        if (window.app && window.app.databaseController && window.app.databaseController.isReady) {
+            return await window.app.databaseController.listarProdutos();
+        }
+
+        const { data, error } = await supabase
+            .from('produtos')
+            .select('*')
+            .order('nome');
+
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Erro ao listar produtos:', error);
+        throw error;
+    }
+}
+
+async function listarVendas() {
+    try {
+        if (window.app && window.app.databaseController && window.app.databaseController.isReady) {
+            return await window.app.databaseController.listarVendas();
+        }
+
+        // Fallback: query simples sem joins complexos
+        const { data, error } = await supabase
+            .from('vendas')
+            .select('*')
+            .order('data_venda', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Erro ao listar vendas:', error);
+        throw error;
+    }
+}

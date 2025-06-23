@@ -230,11 +230,9 @@ class VendaController {
                     quantidade: this.vendaTemporaria.quantidade,
                     valor_unitario: this.vendaTemporaria.valorUnitario,
                     valor_total: this.vendaTemporaria.valorTotal
-                });
-
-                // Criar pagamento
+                });                // Criar pagamento
                 if (this.pagamentoController) {
-                    await this.pagamentoController.criarPagamento({
+                    const dadosPagamento = {
                         venda_id: novaVenda.id,
                         valor_total: this.vendaTemporaria.valorTotal,
                         valor_pago: valorPago,
@@ -243,7 +241,15 @@ class VendaController {
                         numero_parcelas: numeroParcelas,
                         status: statusPagamento,
                         observacoes: observacoes
-                    });
+                    };
+
+                    // Definir data_pagamento apenas se o pagamento está sendo pago à vista
+                    if (statusPagamento === 'pago') {
+                        dadosPagamento.data_pagamento = new Date().toISOString().split('T')[0];
+                    }
+
+                    await this.pagamentoController.criarPagamento(dadosPagamento);
+                    console.log('Pagamento criado para venda:', novaVenda.id, 'Status:', statusPagamento, 'Data pagamento:', dadosPagamento.data_pagamento);
                 }
 
                 // Atualizar estoque
@@ -263,10 +269,11 @@ class VendaController {
                     valor_total: this.vendaTemporaria.valorTotal,
                     clientes: this.clienteController.obterCliente(this.vendaTemporaria.clienteId),
                     produtos: this.vendaTemporaria.produto
-                };
-
-                this.vendas.unshift(novaVenda);
+                }; this.vendas.unshift(novaVenda);
                 this.renderizarHistorico();
+
+                // Criar pagamento automático também no fallback
+                await this.criarPagamentoAutomatico(novaVenda.id, this.vendaTemporaria.valorTotal);
 
                 // Atualizar estoque
                 await this.produtoController.atualizarEstoque(
@@ -447,5 +454,27 @@ class VendaController {
                 selectProduto.appendChild(option);
             }
         });
+    } async criarPagamentoAutomatico(vendaId, valorTotal) {
+        if (!this.pagamentoController) {
+            console.log('PagamentoController não disponível, não criando pagamento automático');
+            return;
+        }
+
+        try {
+            await this.pagamentoController.criarPagamento({
+                venda_id: vendaId,
+                valor_total: valorTotal,
+                valor_pago: valorTotal, // Assumir pagamento à vista completo
+                metodo_pagamento: 'dinheiro',
+                data_vencimento: new Date().toISOString().split('T')[0],
+                data_pagamento: new Date().toISOString().split('T')[0], // Corrigir para formato DATE
+                numero_parcelas: 1,
+                status: 'pago',
+                observacoes: 'Pagamento automático - venda à vista'
+            });
+            console.log('Pagamento automático criado para venda:', vendaId);
+        } catch (error) {
+            console.error('Erro ao criar pagamento automático:', error);
+        }
     }
 }
