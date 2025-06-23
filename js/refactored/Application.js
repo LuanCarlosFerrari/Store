@@ -201,6 +201,16 @@ export class Application {
             const saleView = this.saleController.view;
             const saleData = saleView.getSaleData();
 
+            // Garantir que paymentTerms existe e tem valores válidos
+            if (!saleData.paymentTerms) {
+                saleData.paymentTerms = {
+                    type: 'vista',
+                    dueDate: new Date(),
+                    initialValue: 0,
+                    remainingValue: 0
+                };
+            }
+
             // Processar cada produto como uma venda separada (compatibilidade com sistema atual)
             const results = [];
             for (const product of saleData.products) {
@@ -216,23 +226,24 @@ export class Application {
 
                 const sale = await this.saleController.createSale(individualSaleData);
                 results.push(sale);
-            }
-
-            // Mostrar mensagem de sucesso com detalhes do prazo
+            }// Mostrar mensagem de sucesso com detalhes do prazo
             let successMessage = `Venda finalizada com sucesso! ${results.length} produto(s) vendido(s).`;
 
-            if (saleData.paymentTerms.type === 'prazo') {
+            if (saleData.paymentTerms && saleData.paymentTerms.type === 'prazo') {
                 const dueDate = saleData.paymentTerms.dueDate.toLocaleDateString('pt-BR');
                 if (saleData.paymentTerms.initialValue > 0) {
                     successMessage += ` Valor inicial: R$ ${saleData.paymentTerms.initialValue.toFixed(2).replace('.', ',')}. Vencimento: ${dueDate}.`;
                 } else {
                     successMessage += ` Vencimento: ${dueDate}.`;
                 }
-            }
-
-            // Limpar formulário e atualizar interface
+            }            // Limpar formulário e atualizar interface
             saleView.clearSaleForm();
             saleView.showSuccess(successMessage);
+
+            // Mostrar notificação do sistema
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(successMessage, 'success');
+            }
 
             // Recarregar vendas e atualizar dashboard
             await this.saleController.loadSales();
@@ -241,6 +252,11 @@ export class Application {
         } catch (error) {
             console.error('Erro ao finalizar venda:', error);
             this.saleController.view?.showError(error.message);
+
+            // Mostrar notificação de erro do sistema
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('Erro ao finalizar venda: ' + error.message, 'error');
+            }
         }
     }
 
@@ -360,35 +376,81 @@ export class Application {
         // Pré-carregar produtos e clientes para os selects
         await this.productController.loadProducts();
         await this.customerController.loadCustomers();
-    }
+    } async handleProductSubmit(formData) {
+        try {
+            const productData = {
+                name: formData.get('nome'),
+                quantity: parseInt(formData.get('quantidade')),
+                price: parseFloat(formData.get('preco'))
+            };
 
-    async handleProductSubmit(formData) {
-        const productData = {
-            name: formData.get('nome'),
-            quantity: parseInt(formData.get('quantidade')),
-            price: parseFloat(formData.get('preco'))
-        };
+            // Verificar se é edição ou criação
+            const editId = document.getElementById('edit-product-id');
 
-        await this.productController.createProduct(productData);
+            if (editId && editId.value) {
+                // Modo edição
+                await this.productController.updateProduct(editId.value, productData);
 
-        // Atualizar dashboard se estiver ativo
-        if (this.currentTab === 'dashboard') {
-            await this.dashboardController.refreshDashboard();
+                // Limpar modo edição
+                editId.remove();
+
+                // Remover botão de cancelar
+                const cancelBtn = document.getElementById('cancel-edit-product');
+                if (cancelBtn) {
+                    cancelBtn.remove();
+                }
+
+                // Restaurar texto do botão
+                const submitBtn = document.querySelector('#produtos form button[type="submit"]');
+                submitBtn.textContent = 'Adicionar Produto';
+            } else {
+                // Modo criação
+                await this.productController.createProduct(productData);
+            }
+
+            // Limpar formulário
+            document.querySelector('#produtos form').reset();
+        } catch (error) {
+            console.error('Erro ao salvar produto:', error);
         }
     }
 
     async handleCustomerSubmit(formData) {
-        const customerData = {
-            name: formData.get('nome'),
-            email: formData.get('email') || null,
-            phone: formData.get('telefone') || null
-        };
+        try {
+            const customerData = {
+                name: formData.get('nome'),
+                email: formData.get('email'),
+                phone: formData.get('telefone')
+            };
 
-        await this.customerController.createCustomer(customerData);
+            // Verificar se é edição ou criação
+            const editId = document.getElementById('edit-customer-id');
 
-        // Atualizar dashboard se estiver ativo
-        if (this.currentTab === 'dashboard') {
-            await this.dashboardController.refreshDashboard();
+            if (editId && editId.value) {
+                // Modo edição
+                await this.customerController.updateCustomer(editId.value, customerData);
+
+                // Limpar modo edição
+                editId.remove();
+
+                // Remover botão de cancelar
+                const cancelBtn = document.getElementById('cancel-edit-customer');
+                if (cancelBtn) {
+                    cancelBtn.remove();
+                }
+
+                // Restaurar texto do botão
+                const submitBtn = document.querySelector('#clientes form button[type="submit"]');
+                submitBtn.textContent = 'Adicionar Cliente';
+            } else {
+                // Modo criação
+                await this.customerController.createCustomer(customerData);
+            }
+
+            // Limpar formulário
+            document.querySelector('#clientes form').reset();
+        } catch (error) {
+            console.error('Erro ao salvar cliente:', error);
         }
     } async handleSaleSubmit(formData) {
         const saleData = {

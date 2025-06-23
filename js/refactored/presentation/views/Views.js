@@ -78,23 +78,30 @@ export class ProductView extends BaseView {
                 </tr>
             `;
             return;
-        }
-
-        this.productsContainer.innerHTML = products.map(product => `
+        } this.productsContainer.innerHTML = products.map(product => `
             <tr class="hover:bg-gray-50">
                 <td class="border px-4 py-2">${product.name}</td>
                 <td class="border px-4 py-2">${product.quantity}</td>
                 <td class="border px-4 py-2">${this.formatCurrency(product.price)}</td>
                 <td class="border px-4 py-2">${this.formatCurrency(typeof product.getTotalValue === 'function' ? product.getTotalValue() : product.quantity * product.price)}</td>
                 <td class="border px-4 py-2">
-                    <button onclick="editProduct('${product.id}')" 
-                            class="bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600 mr-2">
-                        Editar
-                    </button>
-                    <button onclick="deleteProduct('${product.id}')" 
-                            class="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600">
-                        Excluir
-                    </button>
+                    <div class="flex gap-1 flex-wrap">
+                        <button onclick="viewProduct('${product.id}')" 
+                                class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600" 
+                                title="Visualizar">
+                            👁️
+                        </button>
+                        <button onclick="editProduct('${product.id}')" 
+                                class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600" 
+                                title="Editar">
+                            ✏️
+                        </button>
+                        <button onclick="deleteProduct('${product.id}')" 
+                                class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600" 
+                                title="Excluir">
+                            🗑️
+                        </button>
+                    </div>
                 </td>
             </tr>
         `).join('');
@@ -138,22 +145,29 @@ export class CustomerView extends BaseView {
                 </tr>
             `;
             return;
-        }
-
-        this.customersContainer.innerHTML = customers.map(customer => `
+        } this.customersContainer.innerHTML = customers.map(customer => `
             <tr class="hover:bg-gray-50">
                 <td class="border px-4 py-2">${customer.name}</td>
                 <td class="border px-4 py-2">${customer.email || 'N/A'}</td>
                 <td class="border px-4 py-2">${customer.phone || 'N/A'}</td>
                 <td class="border px-4 py-2">
-                    <button onclick="editCustomer('${customer.id}')" 
-                            class="bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600 mr-2">
-                        Editar
-                    </button>
-                    <button onclick="deleteCustomer('${customer.id}')" 
-                            class="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600">
-                        Excluir
-                    </button>
+                    <div class="flex gap-1 flex-wrap">
+                        <button onclick="viewCustomer('${customer.id}')" 
+                                class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600" 
+                                title="Visualizar">
+                            👁️
+                        </button>
+                        <button onclick="editCustomer('${customer.id}')" 
+                                class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600" 
+                                title="Editar">
+                            ✏️
+                        </button>
+                        <button onclick="deleteCustomer('${customer.id}')" 
+                                class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600" 
+                                title="Excluir">
+                            🗑️
+                        </button>
+                    </div>
                 </td>
             </tr>
         `).join('');
@@ -195,14 +209,12 @@ export class SaleView extends BaseView {
         this.productsTable = document.getElementById('produtos-venda');
         this.totalElement = document.getElementById('total-venda');
         this.finalizeSaleBtn = document.getElementById('finalizar-venda');
-        this.noProductsRow = document.getElementById('no-produtos-row');
-
-        // Elementos de prazo
+        this.noProductsRow = document.getElementById('no-produtos-row');        // Elementos de prazo
         this.paymentTypeSelect = document.getElementById('payment-type');
         this.prazoOptions = document.getElementById('prazo-options');
         this.prazoDiasSelect = document.getElementById('prazo-dias');
         this.customDateContainer = document.getElementById('custom-date-container');
-        this.customDueDateInput = document.getElementById('custom-due-date');
+        this.customDateInput = document.getElementById('custom-due-date');
         this.valorInicialInput = document.getElementById('valor-inicial');
 
         // Event listeners
@@ -435,9 +447,10 @@ export class SaleView extends BaseView {
         // Ocultar opções de prazo
         if (this.prazoOptions) this.prazoOptions.classList.add('hidden');
         if (this.customDateContainer) this.customDateContainer.classList.add('hidden');
-    }
+    } getSaleData() {
+        // Debug para verificar se elementos existem
+        this.debugElements();
 
-    getSaleData() {
         const customerSelect = document.getElementById('cliente');
         const paymentMethodSelect = document.getElementById('payment-method');
 
@@ -449,16 +462,30 @@ export class SaleView extends BaseView {
             throw new Error('Adicione pelo menos um produto à venda');
         }
 
-        // Obter dados de prazo
-        const paymentTerms = this.getPaymentTermsData();
+        // Obter dados de prazo com tratamento de erro
+        let paymentTerms;
+        try {
+            paymentTerms = this.getPaymentTermsData();
+        } catch (error) {
+            console.error('Erro ao obter dados de pagamento, usando padrão à vista:', error);
+            paymentTerms = {
+                type: 'vista',
+                dueDate: new Date(),
+                initialValue: 0,
+                remainingValue: 0
+            };
+        }
 
-        return {
+        const saleData = {
             customerId: customerSelect.value,
             products: this.saleProducts,
             paymentMethod: paymentMethodSelect?.value || 'pix',
             totalValue: this.updateTotal(),
             paymentTerms: paymentTerms
         };
+
+        console.log('Dados da venda:', saleData);
+        return saleData;
     }
 
     displaySales(sales) {
@@ -487,12 +514,14 @@ export class SaleView extends BaseView {
                     <span class="px-2 py-1 rounded text-xs ${this.getPaymentStatusClass(sale.paymentStatus || 'pendente')}">
                         ${this.getPaymentStatusText(sale.paymentStatus || 'pendente')}
                     </span>
-                </td>
-                <td class="border px-4 py-2 text-center">
-                    <button onclick="viewSaleDetails('${sale.id}')" 
-                            class="bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600">
-                        Detalhes
-                    </button>
+                </td>                <td class="border px-4 py-2 text-center">
+                    <div class="flex gap-1 justify-center flex-wrap">
+                        <button onclick="viewSaleDetails('${sale.id}')" 
+                                class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600" 
+                                title="Ver Detalhes">
+                            👁️
+                        </button>
+                    </div>
                 </td>
             </tr>
         `).join('');
@@ -625,31 +654,71 @@ export class SaleView extends BaseView {
         `;
 
         summaryElement.classList.remove('hidden');
-    }
+    } getPaymentTermsData() {
+        // Verificar se elementos existem antes de acessá-los
+        const paymentTypeSelect = this.paymentTypeSelect || document.getElementById('payment-type');
+        const isPrazo = paymentTypeSelect?.value === 'prazo';
 
-    getPaymentTermsData() {
-        const isPrazo = this.paymentTypeSelect?.value === 'prazo';
-        if (!isPrazo) return null;
+        if (!isPrazo) {
+            return {
+                type: 'vista',
+                dueDate: new Date(),
+                initialValue: 0,
+                remainingValue: 0
+            };
+        }
 
         const total = this.saleProducts.reduce((sum, product) => sum + product.subtotal, 0);
-        const valorInicial = parseFloat(this.valorInicialInput?.value || 0);
+        const valorInicialInput = this.valorInicialInput || document.getElementById('valor-inicial');
+        const valorInicial = parseFloat(valorInicialInput?.value || 0);
+
+        const prazoDiasSelect = this.prazoDiasSelect || document.getElementById('prazo-dias');
+        const customDateInput = this.customDateInput || document.getElementById('custom-due-date');
 
         let dueDate = null;
-        if (this.prazoDiasSelect?.value === 'custom') {
-            dueDate = this.customDateInput?.value;
+        if (prazoDiasSelect?.value === 'custom') {
+            dueDate = customDateInput?.value;
         } else {
-            const dias = parseInt(this.prazoDiasSelect?.value || 0);
+            const dias = parseInt(prazoDiasSelect?.value || 30); // padrão 30 dias
             if (dias > 0) {
                 const data = new Date();
                 data.setDate(data.getDate() + dias);
                 dueDate = data.toISOString().split('T')[0];
             }
-        } return {
+        }
+
+        // Se não conseguir determinar data de vencimento, usar uma padrão
+        if (!dueDate) {
+            const defaultDate = new Date();
+            defaultDate.setDate(defaultDate.getDate() + 30); // 30 dias padrão
+            dueDate = defaultDate.toISOString().split('T')[0];
+        }
+
+        return {
             type: 'prazo',
             dueDate: new Date(dueDate),
             initialValue: valorInicial,
             remainingValue: total - valorInicial
         };
+    }
+
+    // Função de debug para verificar elementos
+    debugElements() {
+        console.log('=== DEBUG: Elementos da SaleView ===');
+        console.log('productSelect:', this.productSelect);
+        console.log('quantityInput:', this.quantityInput);
+        console.log('unitPriceInput:', this.unitPriceInput);
+        console.log('addProductBtn:', this.addProductBtn);
+        console.log('salesTableBody:', this.salesTableBody);
+        console.log('totalElement:', this.totalElement);
+        console.log('finalizeSaleBtn:', this.finalizeSaleBtn);
+        console.log('paymentTypeSelect:', this.paymentTypeSelect);
+        console.log('prazoOptions:', this.prazoOptions);
+        console.log('prazoDiasSelect:', this.prazoDiasSelect);
+        console.log('customDateInput:', this.customDateInput);
+        console.log('valorInicialInput:', this.valorInicialInput);
+        console.log('saleProducts length:', this.saleProducts.length);
+        console.log('==================================');
     }
 }
 
@@ -698,16 +767,28 @@ export class PaymentView extends BaseView {
                     <span class="px-2 py-1 rounded text-xs ${this.getStatusColorClass(payment.getStatus())}">
                         ${this.getStatusText(payment.getStatus())}
                     </span>
-                </td>
-                <td class="border px-2 py-1">
-                    ${payment.getStatus() !== 'pago' ? `
-                        <button onclick="makePayment('${payment.id}')" 
-                                class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600">
-                            Pagar
+                </td>                <td class="border px-2 py-1">
+                    <div class="flex gap-1 flex-wrap">
+                        <button onclick="viewPaymentDetails('${payment.id}')" 
+                                class="bg-blue-500 text-white px-1 py-1 rounded text-xs hover:bg-blue-600" 
+                                title="Ver Detalhes">
+                            👁️
                         </button>
-                    ` : `
-                        <span class="text-green-600 text-xs">✓ Pago</span>
-                    `}
+                        ${payment.getStatus() !== 'pago' ? `
+                            <button onclick="makePayment('${payment.id}')" 
+                                    class="bg-green-500 text-white px-1 py-1 rounded text-xs hover:bg-green-600" 
+                                    title="Efetuar Pagamento">
+                                💰
+                            </button>
+                            <button onclick="editPayment('${payment.id}')" 
+                                    class="bg-yellow-500 text-white px-1 py-1 rounded text-xs hover:bg-yellow-600" 
+                                    title="Editar">
+                                ✏️
+                            </button>
+                        ` : `
+                            <span class="text-green-600 text-xs px-1">✓</span>
+                        `}
+                    </div>
                 </td>
             </tr>
         `).join('');
