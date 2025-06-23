@@ -644,7 +644,7 @@ export class SaleView extends BaseView {
                 data.setDate(data.getDate() + dias);
                 dueDate = data.toISOString().split('T')[0];
             }
-        }        return {
+        } return {
             type: 'prazo',
             dueDate: new Date(dueDate),
             initialValue: valorInicial,
