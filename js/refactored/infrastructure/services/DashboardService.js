@@ -11,15 +11,14 @@ export class DashboardService {
         const targetDate = selectedDate ? new Date(selectedDate) : new Date();
 
         try {
-            console.log(`Dashboard: Calculando métricas para data ${targetDate.toISOString().split('T')[0]}`);
-
-            const [
+            console.log(`Dashboard: Calculando métricas para data ${targetDate.toISOString().split('T')[0]}`); const [
                 totalProducts,
                 totalCustomers,
                 totalSalesToday,
                 totalReceived,
                 totalPending,
                 totalOverdue,
+                totalPartial,
                 recentSales
             ] = await Promise.all([
                 this.getTotalProductsInStock(userId),
@@ -28,16 +27,16 @@ export class DashboardService {
                 this.getTotalReceivedForDate(targetDate, userId),
                 this.getTotalPending(userId),
                 this.getTotalOverdue(userId),
+                this.getTotalPartial(userId),
                 this.getRecentSales(targetDate, userId)
-            ]);
-
-            console.log('Dashboard métricas calculadas:', {
+            ]); console.log('Dashboard métricas calculadas:', {
                 totalProducts,
                 totalCustomers,
                 totalSalesToday,
                 totalReceived,
                 totalPending,
                 totalOverdue,
+                totalPartial,
                 recentSalesCount: recentSales.length
             });
 
@@ -48,6 +47,7 @@ export class DashboardService {
                 totalReceived,
                 totalPending,
                 totalOverdue,
+                totalPartial,
                 recentSales,
                 selectedDate: targetDate.toISOString().split('T')[0]
             };
@@ -149,6 +149,14 @@ export class DashboardService {
                 total: pendingPayments.reduce((sum, p) => sum + p.getRemainingValue(), 0)
             }
         };
+    }
+
+    async getTotalPartial(userId = null) {
+        console.log('DashboardService: Calculando total parcial...');
+        const partialPayments = await this.paymentUseCases.getPartialPayments(userId);
+        const total = partialPayments.reduce((sum, payment) => sum + payment.getRemainingValue(), 0);
+        console.log('DashboardService: Total parcial calculado:', total);
+        return total;
     }
 
     formatCurrency(value) {

@@ -340,14 +340,14 @@ export class DashboardView extends BaseView {
         this.messageContainer = document.getElementById('dashboard-messages');
     }
 
-    displayMetrics(metrics, paymentMetrics) {
-        // Atualizar métricas principais
+    displayMetrics(metrics, paymentMetrics) {        // Atualizar métricas principais
         this.updateElement('total-produtos', metrics.totalProducts);
         this.updateElement('total-clientes', metrics.totalCustomers);
         this.updateElement('vendas-dia', this.formatCurrency(metrics.totalSalesToday));
         this.updateElement('recebido-dia', this.formatCurrency(metrics.totalReceived));
         this.updateElement('pendente-total', this.formatCurrency(metrics.totalPending));
         this.updateElement('atraso-total', this.formatCurrency(metrics.totalOverdue));
+        this.updateElement('parcial-total', this.formatCurrency(metrics.totalPartial || 0));
 
         // Atualizar métricas de pagamento
         this.updateElement('qtd-atraso',
@@ -355,16 +355,13 @@ export class DashboardView extends BaseView {
         );
         this.updateElement('qtd-parcial',
             `${paymentMetrics.partial.count} pagamento${paymentMetrics.partial.count !== 1 ? 's' : ''} parcial${paymentMetrics.partial.count !== 1 ? 'is' : ''}`
-        );
-
-        // Atualizar data selecionada
+        );        // Atualizar data selecionada
         this.updateElement('data-selecionada-display', this.formatDate(metrics.selectedDate));
+        this.updateElement('data-selecionada-display-2', this.formatDate(metrics.selectedDate));
 
         // Atualizar tabela de vendas recentes
         this.displayRecentSales(metrics.recentSales);
-    }
-
-    displayRecentSales(sales) {
+    } displayRecentSales(sales) {
         const container = document.getElementById('dashboard-vendas');
         if (!container) return;
 
@@ -386,10 +383,46 @@ export class DashboardView extends BaseView {
                 <td class="border px-2 py-1">${sale.productName || 'N/A'}</td>
                 <td class="border px-2 py-1">${sale.quantity}</td>
                 <td class="border px-2 py-1">${this.formatCurrency(sale.totalValue)}</td>
-                <td class="border px-2 py-1">PIX</td>
-                <td class="border px-2 py-1 text-green-600">Pago</td>
+                <td class="border px-2 py-1">${this.getPaymentMethodText(sale.paymentMethod || 'dinheiro')}</td>
+                <td class="border px-2 py-1">
+                    <span class="px-2 py-1 rounded text-xs ${this.getPaymentStatusClass(sale.paymentStatus || 'pendente')}">
+                        ${this.getPaymentStatusText(sale.paymentStatus || 'pendente')}
+                    </span>
+                </td>
             </tr>
         `).join('');
+    }
+
+    getPaymentMethodText(method) {
+        const methods = {
+            'dinheiro': 'Dinheiro',
+            'pix': 'PIX',
+            'cartao_debito': 'Cartão Débito',
+            'cartao_credito': 'Cartão Crédito',
+            'transferencia': 'Transferência',
+            'boleto': 'Boleto'
+        };
+        return methods[method] || method;
+    }
+
+    getPaymentStatusClass(status) {
+        const colors = {
+            'pago': 'bg-green-100 text-green-800',
+            'pendente': 'bg-yellow-100 text-yellow-800',
+            'parcial': 'bg-blue-100 text-blue-800',
+            'vencido': 'bg-red-100 text-red-800'
+        };
+        return colors[status] || 'bg-gray-100 text-gray-800';
+    }
+
+    getPaymentStatusText(status) {
+        const statuses = {
+            'pago': 'Pago',
+            'pendente': 'Pendente',
+            'parcial': 'Parcial',
+            'vencido': 'Vencido'
+        };
+        return statuses[status] || status;
     }
 
     updateElement(elementId, value) {

@@ -242,15 +242,14 @@ export class SupabaseSaleRepository extends ISaleRepository {
             sale.unitValue = item.valor_unitario || (sale.totalValue / sale.quantity);
             return sale;
         });
-    }
-
-    async findByDateRange(startDate, endDate, userId = null) {
+    } async findByDateRange(startDate, endDate, userId = null) {
         let query = this.supabase
             .from(this.tableName)
             .select(`
                 *,
                 clientes:cliente_id(nome),
-                produtos:produto_id(nome)
+                produtos:produto_id(nome),
+                pagamentos(status, metodo_pagamento)
             `)
             .gte('data_venda', startDate.toISOString())
             .lte('data_venda', endDate.toISOString());
@@ -262,7 +261,27 @@ export class SupabaseSaleRepository extends ISaleRepository {
         const { data, error } = await query.order('data_venda', { ascending: false });
 
         if (error) throw new Error(`Erro ao buscar vendas por data: ${error.message}`);
-        return data.map(item => Sale.fromJSON(item));
+        return data.map(item => {
+            const sale = Sale.fromJSON(item);
+            // Adicionar informações dos relacionamentos
+            if (item.clientes) {
+                sale.customerName = item.clientes.nome;
+            }
+            if (item.produtos) {
+                sale.productName = item.produtos.nome;
+            }
+            // Determinar status e método do pagamento
+            if (item.pagamentos && item.pagamentos.length > 0) {
+                sale.paymentStatus = item.pagamentos[0].status;
+                sale.paymentMethod = item.pagamentos[0].metodo_pagamento;
+            } else {
+                sale.paymentStatus = 'pendente';
+                sale.paymentMethod = 'dinheiro'; // padrão
+            }
+            // Adicionar valor unitário
+            sale.unitValue = item.valor_unitario || (sale.totalValue / sale.quantity);
+            return sale;
+        });
     }
 
     async update(sale) {
