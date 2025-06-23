@@ -544,6 +544,115 @@ export class SaleView extends BaseView {
             `;
         }
     }
+
+    // Métodos auxiliares para vendas a prazo
+    updateValorInicialPlaceholder() {
+        if (!this.valorInicialInput) return;
+
+        const total = this.saleProducts.reduce((sum, product) => sum + product.subtotal, 0);
+        const isPrazo = this.paymentTypeSelect?.value === 'prazo';
+
+        if (isPrazo && total > 0) {
+            this.valorInicialInput.placeholder = `Máximo: R$ ${total.toFixed(2).replace('.', ',')}`;
+            this.valorInicialInput.max = total;
+        } else {
+            this.valorInicialInput.placeholder = 'Valor da entrada';
+            this.valorInicialInput.removeAttribute('max');
+        }
+    }
+
+    validateValorInicial() {
+        if (!this.valorInicialInput) return true;
+
+        const valor = parseFloat(this.valorInicialInput.value || 0);
+        const total = this.saleProducts.reduce((sum, product) => sum + product.subtotal, 0);
+        const isPrazo = this.paymentTypeSelect?.value === 'prazo';
+
+        if (isPrazo && valor > total) {
+            this.valorInicialInput.setCustomValidity('Valor de entrada não pode ser maior que o total');
+            return false;
+        } else {
+            this.valorInicialInput.setCustomValidity('');
+            return true;
+        }
+    }
+
+    updateDueDateFromDays() {
+        if (!this.prazoDiasSelect || !this.customDateInput) return;
+
+        const dias = parseInt(this.prazoDiasSelect.value);
+        if (dias && dias > 0) {
+            const dataVencimento = new Date();
+            dataVencimento.setDate(dataVencimento.getDate() + dias);
+            this.customDateInput.value = dataVencimento.toISOString().split('T')[0];
+        }
+
+        this.updatePrazoSummary();
+    }
+
+    updatePrazoSummary() {
+        const summaryElement = document.getElementById('prazo-summary');
+        if (!summaryElement) return;
+
+        const isPrazo = this.paymentTypeSelect?.value === 'prazo';
+        if (!isPrazo) {
+            summaryElement.classList.add('hidden');
+            return;
+        }
+
+        const total = this.saleProducts.reduce((sum, product) => sum + product.subtotal, 0);
+        const valorInicial = parseFloat(this.valorInicialInput?.value || 0);
+        const valorRestante = total - valorInicial;
+
+        let dataVencimento = '';
+        if (this.prazoDiasSelect?.value === 'custom') {
+            dataVencimento = this.customDateInput?.value || '';
+        } else {
+            const dias = parseInt(this.prazoDiasSelect?.value || 0);
+            if (dias > 0) {
+                const data = new Date();
+                data.setDate(data.getDate() + dias);
+                dataVencimento = data.toLocaleDateString('pt-BR');
+            }
+        }
+
+        summaryElement.innerHTML = `
+            <strong>Resumo do Pagamento:</strong><br>
+            Total: R$ ${total.toFixed(2).replace('.', ',')}<br>
+            ${valorInicial > 0 ? `Entrada: R$ ${valorInicial.toFixed(2).replace('.', ',')}<br>` : ''}
+            Restante: R$ ${valorRestante.toFixed(2).replace('.', ',')}<br>
+            ${dataVencimento ? `Vencimento: ${dataVencimento}` : ''}
+        `;
+
+        summaryElement.classList.remove('hidden');
+    }
+
+    getPaymentTermsData() {
+        const isPrazo = this.paymentTypeSelect?.value === 'prazo';
+        if (!isPrazo) return null;
+
+        const total = this.saleProducts.reduce((sum, product) => sum + product.subtotal, 0);
+        const valorInicial = parseFloat(this.valorInicialInput?.value || 0);
+
+        let dueDate = null;
+        if (this.prazoDiasSelect?.value === 'custom') {
+            dueDate = this.customDateInput?.value;
+        } else {
+            const dias = parseInt(this.prazoDiasSelect?.value || 0);
+            if (dias > 0) {
+                const data = new Date();
+                data.setDate(data.getDate() + dias);
+                dueDate = data.toISOString().split('T')[0];
+            }
+        }
+
+        return {
+            isInstallment: true,
+            dueDate: dueDate,
+            initialPayment: valorInicial,
+            remainingValue: total - valorInicial
+        };
+    }
 }
 
 export class PaymentView extends BaseView {
