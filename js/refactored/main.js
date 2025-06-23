@@ -9,6 +9,24 @@ const SUPABASE_CONFIG = {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0aG5mcmhucWxidmtvYm1odHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0NDQ5NzMsImV4cCI6MjA2NjAyMDk3M30.KYmxo-BNljioDJEbCuMn38BiAXRv0mZflU0WvjCOdF8'
 };
 
+// Função global para inicializar a aplicação
+window.initializeApp = async (supabaseClient) => {
+    try {
+        console.log('Criando instância da aplicação...');
+        const app = new Application(supabaseClient);
+        console.log('Instância criada, inicializando...');
+        await app.initialize();
+        console.log('Aplicação inicializada com sucesso!');
+
+        // Armazenar globalmente para compatibilidade
+        window.app = app;
+        return app;
+    } catch (error) {
+        console.error('Erro ao inicializar aplicação:', error);
+        throw error;
+    }
+};
+
 // Inicialização quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -89,5 +107,89 @@ window.utils = {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
+    }
+};
+
+// Funções globais para compatibilidade com HTML existente
+window.mostrarAba = async (tabId) => {
+    if (window.app) {
+        await window.app.showTab(tabId);
+    }
+};
+
+window.atualizarDashboard = async () => {
+    if (window.app) {
+        await window.app.refreshDashboard();
+    }
+};
+
+window.filtrarVendasPorData = async () => {
+    const dateInput = document.getElementById('dataSelecionada');
+    if (window.app && dateInput) {
+        await window.app.filterByDate(dateInput.value || null);
+    }
+};
+
+window.resetarFiltroData = async () => {
+    const dateInput = document.getElementById('dataSelecionada');
+    if (window.app && dateInput) {
+        dateInput.value = '';
+        await window.app.filterByDate(null);
+    }
+};
+
+// Funções para produtos
+window.editProduct = async (productId) => {
+    console.log('Editar produto:', productId);
+    // TODO: Implementar modal de edição
+    alert('Funcionalidade de edição será implementada em breve');
+};
+
+window.deleteProduct = async (productId) => {
+    if (confirm('Tem certeza que deseja excluir este produto?')) {
+        try {
+            const productController = window.app.getController('product');
+            await productController.deleteProduct(productId);
+        } catch (error) {
+            console.error('Erro ao excluir produto:', error);
+        }
+    }
+};
+
+// Funções para clientes
+window.editCustomer = async (customerId) => {
+    console.log('Editar cliente:', customerId);
+    // TODO: Implementar modal de edição
+    alert('Funcionalidade de edição será implementada em breve');
+};
+
+window.deleteCustomer = async (customerId) => {
+    if (confirm('Tem certeza que deseja excluir este cliente?')) {
+        try {
+            const customerController = window.app.getController('customer');
+            await customerController.deleteCustomer(customerId);
+        } catch (error) {
+            console.error('Erro ao excluir cliente:', error);
+        }
+    }
+};
+
+// Funções para vendas
+window.viewSaleDetails = async (saleId) => {
+    console.log('Ver detalhes da venda:', saleId);
+    // TODO: Implementar modal de detalhes
+    alert('Detalhes da venda serão implementados em breve');
+};
+
+// Funções para pagamentos
+window.makePayment = async (paymentId) => {
+    const amount = prompt('Digite o valor do pagamento:');
+    if (amount && !isNaN(parseFloat(amount))) {
+        try {
+            const paymentController = window.app.getController('payment');
+            await paymentController.makePayment(paymentId, parseFloat(amount));
+        } catch (error) {
+            console.error('Erro ao processar pagamento:', error);
+        }
     }
 };

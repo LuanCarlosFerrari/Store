@@ -1,10 +1,10 @@
 /**
  * Use Cases - Contém a lógica de negócio da aplicação
  */
-import { Product } from '../domain/entities/Product.js';
-import { Customer } from '../domain/entities/Customer.js';
-import { Sale } from '../domain/entities/Sale.js';
-import { Payment } from '../domain/entities/Payment.js';
+import { Product } from '../../domain/entities/Product.js';
+import { Customer } from '../../domain/entities/Customer.js';
+import { Sale } from '../../domain/entities/Sale.js';
+import { Payment } from '../../domain/entities/Payment.js';
 
 export class ProductUseCases {
     constructor(productRepository) {
