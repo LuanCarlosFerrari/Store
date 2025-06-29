@@ -38,40 +38,43 @@
     </script>
 </head>
 
-<body class="font-sans bg-gray-50 text-gray-900">    <!-- Topbar -->
+<body class="font-sans bg-gray-50 text-gray-900"> <!-- Topbar -->
     <header
         class="fixed top-0 left-0 w-full h-16 bg-black text-white flex items-center justify-between px-4 sm:px-6 shadow-md z-50">
         <!-- Botão Hamburger (visível apenas em mobile) -->
         <button id="menuToggle" class="md:hidden text-white hover:text-gray-300 transition-colors">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16">
+                </path>
             </svg>
         </button>
-        
+
         <!-- Título (oculto em mobile) -->
         <h1 class="hidden sm:block text-base sm:text-xl font-semibold">Sistema de Estoque (Clean Architecture)</h1>
-        
+
         <!-- Spacer para centralizar no mobile quando não há título -->
         <div class="md:hidden"></div>
-        
+
         <div class="flex items-center space-x-2 sm:space-x-4">
             <span id="userEmail" class="text-xs sm:text-sm text-gray-300"></span>
             <button id="logoutBtn"
                 class="bg-gray-700 px-2 py-1 rounded hover:bg-gray-600 text-xs sm:text-sm">Sair</button>
         </div>
-    </header>    <!-- Layout Principal -->
+    </header> <!-- Layout Principal -->
     <div class="flex pt-16 min-h-screen">
         <!-- Sidebar -->
-        <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 z-40 w-64 bg-gray-800 text-white flex-shrink-0 transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0 md:block pt-16 md:pt-0">
+        <aside id="sidebar"
+            class="fixed md:relative inset-y-0 left-0 z-40 w-64 bg-gray-800 text-white flex-shrink-0 transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0 md:block pt-16 md:pt-0">
             <!-- Botão de fechar (apenas mobile) -->
             <div class="md:hidden flex justify-end p-4 border-b border-gray-700">
                 <button id="closeSidebar" class="text-white hover:text-gray-300">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
                     </svg>
                 </button>
             </div>
-            
+
             <nav class="mt-8 md:mt-8">
                 <a id="nav-dashboard" href="#" data-tab="dashboard"
                     class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 transition-colors duration-200">
@@ -95,7 +98,7 @@
                 </a>
             </nav>
         </aside>
-          <!-- Overlay para mobile -->
+        <!-- Overlay para mobile -->
         <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
 
         <!-- Main Content -->
@@ -603,9 +606,10 @@
                         </table>
                     </div>
                 </div>
-            </div>        </main>
-    </div> 
-    
+            </div>
+        </main>
+    </div>
+
     <!-- Script para controle do menu hamburger -->
     <script>
         // Elementos do menu hamburger
@@ -655,7 +659,7 @@
             e.preventDefault();
         }, { passive: false });
     </script>
-    
+
     <!-- Scripts -->
     <script type="module" src="js/refactored/main.js"></script>
 </body>

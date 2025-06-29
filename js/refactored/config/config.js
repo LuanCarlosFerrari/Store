@@ -5,7 +5,18 @@
 // Configuração do Supabase
 export const SUPABASE_CONFIG = {
     url: 'https://tthnfrhnqlbvkobmhtqu.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0aG5mcmhucWxidmtvYm1odHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0NDQ5NzMsImV4cCI6MjA2NjAyMDk3M30.KYmxo-BNljioDJEbCuMn38BiAXRv0mZflU0WvjCOdF8'
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0aG5mcmhucWxidmtvYm1odHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0NDQ5NzMsImV4cCI6MjA2NjAyMDk3M30.KYmxo-BNljioDJEbCuMn38BiAXRv0mZflU0WvjCOdF8',
+    // Configurações para GitHub Pages
+    options: {
+        auth: {
+            // URL base do GitHub Pages
+            siteUrl: 'https://luancarlosferrari.github.io/store',
+            // URLs de redirecionamento após confirmação de email
+            redirectTo: window.location.hostname === 'localhost'
+                ? `${window.location.origin}/index.html`
+                : 'https://luancarlosferrari.github.io/store/index.html'
+        }
+    }
 };
 
 // Configurações da aplicação
@@ -14,7 +25,7 @@ export const APP_CONFIG = {
     autoRefreshInterval: 30000, // 30 segundos
     dateFormat: 'pt-BR',
     currency: 'BRL',
-    isDevelopment: true // Alterar para false em produção
+    isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 };
 
 // Sistema de logging simplificado

@@ -30,12 +30,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Verificar se Supabase está disponível
         if (typeof window.supabase === 'undefined') {
             throw new Error('Biblioteca Supabase não encontrada');
-        }
-
-        // Criar cliente Supabase
+        }        // Criar cliente Supabase
         const supabaseClient = window.supabase.createClient(
             SUPABASE_CONFIG.url,
-            SUPABASE_CONFIG.anonKey
+            SUPABASE_CONFIG.anonKey,
+            SUPABASE_CONFIG.options
         );
 
         Logger.log('Supabase inicializado, iniciando aplicação...');

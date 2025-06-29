@@ -19,12 +19,17 @@ export class AuthService {
 
         this.currentUser = data.user;
         return data.user;
-    }
+    } async signUp(email, password) {
+        const redirectUrl = window.location.hostname === 'localhost'
+            ? `${window.location.origin}/index.html`
+            : 'https://luancarlosferrari.github.io/store/index.html';
 
-    async signUp(email, password) {
         const { data, error } = await this.supabase.auth.signUp({
             email,
-            password
+            password,
+            options: {
+                emailRedirectTo: redirectUrl
+            }
         });
 
         if (error) {
